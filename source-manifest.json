@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/MengTo/threeui",
+  "commit": "68802d5428071ada5c20db8094b1649e6bb770ed",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2026 Meng To",
+  "renderer": {
+    "source": "src/shaders/temple-night/templeNightRenderer.js",
+    "blob": "364b9ebe5bef2e2bd772ddae2a87adc239d9984e",
+    "size": 124050
+  },
+  "wrapper": {
+    "source": "src/shaders/temple-night/TempleNightScene.tsx",
+    "blob": "a6235f4634a73c852b6b2e0ce3e6e9906d11622e",
+    "size": 3389
+  },
+  "dependency": {
+    "name": "three",
+    "version": "0.149.0"
+  },
+  "externalAssets": [],
+  "proExcluded": true
+}

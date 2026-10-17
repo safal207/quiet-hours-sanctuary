@@ -1,0 +1,9 @@
+{
+  "name": "safonov-quiet-hours",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/verify.mjs"
+  }
+}

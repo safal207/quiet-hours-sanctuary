@@ -51,3 +51,9 @@ Checks cover local links, unique HTML IDs, JavaScript syntax and relevant state/
 The renderer is adapted from Meng To / ThreeUI Community, pinned to commit `68802d5428071ada5c20db8094b1649e6bb770ed`. Its MIT notice is preserved in `LICENSE-ThreeUI.txt`. Changes are listed in `PORTFOLIO.md`. Three.js 0.149.0 is vendored with its MIT notice.
 
 Creative direction and implementation: Alexey Safonov, with AI assistance. Code under MIT; preserve all third-party notices. Inspiration: the supplied Meng To visual references. No commercial relationship or endorsement is implied.
+
+## Startup and mobile recovery
+
+Low/touch mode skips HDR bloom. Desktop bloom is gated by half-float render-target support. The canvas stays hidden until a successful first frame, and both initial and later render failures return to a working Retry action. An explicit lightweight start is available. CSS owns canvas dimensions so orientation changes can resize the drawing buffer.
+
+`npm run check` now exercises startup/retry/context loss with a mocked host, GPU capability policy, and real Three scene assembly with mocked drawing. These are regression checks, not real-device GPU or visual certification.

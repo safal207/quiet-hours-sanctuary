@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node scripts/verify.mjs"
+    "check": "node scripts/verify.mjs && node scripts/verify-render-policy.mjs && node scripts/verify-startup.mjs && node scripts/verify-scene.mjs dist --low && node scripts/verify-scene.mjs dist"
   }
 }

@@ -4,8 +4,9 @@
 /* Exact included world sections SHA-256: b95f0f2d7824af6890e4f4a779376aa3ad75d7fdf01a70c742f3241c9970160d */
 /* Deliberately excluded: HTML page UI, chapter card viewports, cloth cards, generated page images, and the subset-font wordmark. */
 import * as THREE from "./vendor/three.module.js";
+import { canUsePostProcessing } from "./render-policy.js";
 
-export function createTempleNightRenderer(canvas) {
+export function createTempleNightRenderer(canvas, options = {}) {
 /* ------------------------------------------------------------ 0 · basics */
 const Q      = new URLSearchParams(location.search);
 const qs     = (k, d) => { const v = Q.get(k); return v === null ? d : v; };
@@ -1058,9 +1059,9 @@ function texBranchCutout(seed) {
 const vpW = () => Math.max(1, canvas.clientWidth);
 const vpH = () => Math.max(1, canvas.clientHeight);
 let renderer, scene, camera, maxAniso = 1;
-const HI = qs('q', COARSE ? 'low' : 'high');
+const HI = options.quality || qs('q', COARSE ? 'low' : 'high');
 const LOW = HI === 'low';
-const WANT_POST    = qs('post', '1') !== '0';
+let WANT_POST = options.post !== false && !LOW && qs('post', '1') !== '0';
 const WANT_SHADOW  = qs('shadow', LOW ? '0' : '1') !== '0';
 const DPR_CAP      = qn('dpr', LOW ? 1.4 : 1.8);
 /* the renderer trades resolution for frame rate on its own — the scene is
@@ -1071,12 +1072,11 @@ const PERF = { scale: 1, acc: 0, n: 0, locked: qs('adapt', '1') === '0' };
 function initGL() {
   if (qs('nogl', '0') !== '0') throw new Error('webgl disabled');
   renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: !WANT_POST, alpha: false, powerPreference: 'high-performance' });
+  WANT_POST = canUsePostProcessing({ quality: HI, requested: WANT_POST, webgl2: renderer.capabilities.isWebGL2, hasExtension: name => renderer.extensions.has(name) });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, DPR_CAP));
-  /* updateStyle stays on: the stylesheet sizes the canvas at 100% of the
-     initial containing block, which is the very box that runs wide on a
-     phone. Writing the CSS size in pixels pins the element to the layout
-     viewport the buffer was built for. */
-  renderer.setSize(vpW(), vpH(), true);
+  /* CSS owns the canvas size. Writing inline pixels would freeze the next
+     clientWidth/clientHeight measurement after resize or orientation change. */
+  renderer.setSize(vpW(), vpH(), false);
   renderer.outputEncoding = WANT_POST ? THREE.LinearEncoding : THREE.sRGBEncoding;
   renderer.toneMapping = WANT_POST ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
@@ -2334,7 +2334,7 @@ function applyCamera() {
 function resize() {
   const w = vpW(), h = vpH();
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, DPR_CAP) * PERF.scale);
-  renderer.setSize(w, h, true);
+  renderer.setSize(w, h, false);
   camera.aspect = w / h; camera.updateProjectionMatrix();
   const pw = renderer.domElement.width, ph = renderer.domElement.height;
   if (WANT_POST && POST.scene) {
@@ -2523,6 +2523,8 @@ try {
 }
 
 return {
+  quality: HI,
+  postprocessing: WANT_POST,
   setView(value) { RIG.prog = clamp(value, 0, 5); RIG.smooth = RIG.prog; },
   setRain(enabled) { if(WORLD.rain) WORLD.rain.visible=!!enabled; WORLD.ripples.forEach(r=>r.visible=!!enabled); },
   setLight(value) { const exposure=clamp(value, .6, 1.4); if(POST.comp) POST.comp.uniforms.uExp.value=.62*exposure; else renderer.toneMappingExposure=exposure; },

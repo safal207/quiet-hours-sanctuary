@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {canUsePostProcessing} from '../dist/render-policy.js';
+const check=(quality,requested,webgl2,extensions)=>canUsePostProcessing({quality,requested,webgl2,hasExtension:name=>extensions.includes(name)});
+assert.equal(check('low',true,true,['EXT_color_buffer_float']),false,'Low mode never allocates HDR bloom targets');
+assert.equal(check('high',false,true,['EXT_color_buffer_float']),false,'Explicit no-post option remains off');
+assert.equal(check('high',true,true,[]),false,'WebGL2 without renderable float buffers falls back');
+assert.equal(check('high',true,true,['EXT_color_buffer_float']),true);
+const legacy=['OES_texture_half_float','OES_texture_half_float_linear','EXT_color_buffer_half_float'];
+assert.equal(check('high',true,false,legacy),true);
+for(const missing of legacy)assert.equal(check('high',true,false,legacy.filter(x=>x!==missing)),false,'Incomplete WebGL1 capability falls back: '+missing);
+console.log('PASS: low profile, explicit opt-out and WebGL1/2 half-float support gates.');

@@ -115,7 +115,7 @@ function failedState(h,label){assert.equal(h.q('.sanctuary').classList.contains(
 // A browser may retain a failed import URL; a retry uses a new local URL and then caches success.
 {
  const h=harness(),first=h.newLoad(),second=h.newLoad(),pending=h.click();first.reject(new Error('Injected failed module download'));await h.drive(pending);assert.equal(h.q('#enter').disabled,false);
- const retry=h.click();await microtasks();assert.equal(h.loadURLs.length,2);assert.notEqual(h.loadURLs[0],h.loadURLs[1],'Network retry must not reuse the failed browser module-map key');assert.match(h.loadURLs[0],/^\.\/temple-renderer\.js\?v=polish2&attempt=1$/);assert.match(h.loadURLs[1],/^\.\/temple-renderer\.js\?v=polish2&attempt=2$/);
+ const retry=h.click();await microtasks();assert.equal(h.loadURLs.length,2);assert.notEqual(h.loadURLs[0],h.loadURLs[1],'Network retry must not reuse the failed browser module-map key');assert.match(h.loadURLs[0],/^\.\/temple-renderer\.js\?v=polish3&attempt=1$/);assert.match(h.loadURLs[1],/^\.\/temple-renderer\.js\?v=polish3&attempt=2$/);
  h.release(second);await h.drive(retry);assert.equal(h.q('.sanctuary').classList.contains('ready'),true);await h.q('#flat-mode').emit('click');await h.drive(h.click());assert.equal(h.renderers.length,2);assert.equal(h.loadCalls,2,'Successful module exports must be reused for later renderer restarts');
  console.log('PASS failed-download retry uses a fresh module URL and successful exports are cached');
 }
@@ -125,9 +125,15 @@ function failedState(h,label){assert.equal(h.q('.sanctuary').classList.contains(
  h.q('document').hidden=false;await h.q('document').emit('visibilitychange');assert.equal(h.renderers.length,0,'Visibility restoration requires an explicit restart');await h.drive(h.click());assert.equal(h.q('.sanctuary').classList.contains('ready'),true);
  console.log('PASS hidden-tab cancellation and explicit visible restart');
 }
-// The elapsed limit is checked after synchronous setup, which no JS timer can preempt.
+// The async deadline remains active through the UI yield, before any synchronous GL work.
 {
- const h=harness({createDelay:12001}),pending=h.click();h.release();await h.drive(pending);failedState(h,'synchronous over-deadline setup');assert.match(h.q('#status').textContent,/12 секунд/);assert.ok(!h.timeline.includes('ready'),'An over-deadline first frame cannot hide the usable poster');assert.equal(h.timers.size,0);
- console.log('PASS post-constructor elapsed deadline check (not a preemptive GPU watchdog)');
+ const h=harness(),pending=h.click();await h.advance(11999);h.release();await microtasks();assert.equal(h.renderers.length,0);await h.advance(1);await h.drive(pending);assert.equal(h.renderers.length,0,'Expiry before constructor must prevent WebGL creation');assert.match(h.q('#status').textContent,/12 секунд/);assert.equal(h.timers.size,0);assert.equal(h.q('#enter').disabled,false);
+ console.log('PASS asynchronous deadline still guards the pre-constructor UI yield');
+}
+// Synchronous GL cannot be preempted by a JS timer. A valid slower frame must not be discarded.
+{
+ const h=harness({createDelay:26000,reducedMotion:true}),pending=h.click();h.release();await h.drive(pending);assert.equal(h.renderers.length,1);assert.ok(h.firstDraw);assert.equal(h.q('.sanctuary').classList.contains('ready'),true,'A successful slower first frame must remain visible');assert.equal(h.renderers[0].disposed,0);assert.equal(h.errors.length,0);assert.equal(h.timers.size,0,'The asynchronous loading timer is closed before synchronous GL begins');assert.equal(h.q('#enter').disabled,false);
+ await h.advance(12000);assert.equal(h.q('.sanctuary').classList.contains('ready'),true,'No stale async deadline may replace a valid frame with an error');assert.equal(h.renderers[0].disposed,0);assert.equal(h.raf.size,0);
+ console.log('PASS slow synchronous first frame is retained without a false asynchronous timeout');
 }
 console.log('LIMIT: host lifecycle simulation only; this does not validate browser rendering, GLSL or GPU support.');

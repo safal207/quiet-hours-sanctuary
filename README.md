@@ -18,7 +18,7 @@ An atmospheric temple experience built around the free ThreeUI Community scene.
 
 - Immediately usable raster frame of the real model: brightness, rain overlay, framing and reset
 - Three repeatable teaching presets: original → atmosphere → final framing
-- Optional fast-profile WebGL scene with a visible return to the frame, cancel action and a 12-second asynchronous startup deadline
+- Optional fast-profile WebGL scene with a visible return to the frame, cancel action and a 12-second asynchronous module-loading deadline
 - Three camera viewpoints, real rain/ripple visibility and exposure controls
 - Pause, reduced-motion preference and background-tab suspension
 - Local Three.js runtime with no CDN or external textures
@@ -57,9 +57,9 @@ Creative direction and implementation: Alexey Safonov, with AI assistance. Code 
 
 ## Startup and mobile recovery
 
-The visitor page starts the low profile without HDR bloom on all screens. The canvas stays hidden until a successful first frame. While the module loads, the frame controls and cancel button remain usable. A 12-second asynchronous deadline releases the busy state; cancelled or timed-out imports cannot activate a late renderer. Errors preserve the current light, rain and framing. JavaScript timers cannot preempt a synchronous GPU constructor; the elapsed deadline is checked before that first frame is revealed.
+The visitor page starts the low profile without HDR bloom on all screens. The canvas stays hidden until a successful first frame. While the module loads, the frame controls and cancel button remain usable. A 12-second asynchronous module-loading deadline releases the busy state; cancelled or timed-out imports cannot activate a late renderer. Errors preserve the current light, rain and framing. The deadline is cleared before synchronous GPU setup begins: JavaScript timers cannot interrupt it, and a valid first frame is retained even when setup takes longer than 12 seconds.
 
-`npm run check` covers 14 mocked-host lifecycle scenarios plus render-pass contracts. `scripts/verify-fullpage.mjs` checks the actual visitor page in CI, including 1200/390/320 px layout and screenshots, real light/camera changes, cancellation, a delayed module and a network-failure retry. The two browser workflows retain `qa-fullpage*` reports and screenshots for visual review; these do not certify physical phone performance.
+`npm run check` covers 15 mocked-host lifecycle scenarios plus render-pass contracts. `scripts/verify-fullpage.mjs` checks the actual visitor page in CI, including 1200/390/320 px layout and screenshots, real light/camera changes, cancellation, a delayed module and a network-failure retry. The two browser workflows retain `qa-fullpage*` reports and screenshots for visual review; these do not certify physical phone performance.
 
 ## Repeatable lesson
 

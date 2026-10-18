@@ -89,7 +89,9 @@ async function picture(test,id,selector='#scene'){
  pass(id,{image:`${id}.png`,metrics:m});return{bytes,m};
 }
 async function ready(test){
- await test.page.waitForFunction(()=>document.querySelector('.sanctuary')?.classList.contains('ready')||(!document.querySelector('#enter')?.disabled&&document.querySelector('#status')?.textContent.match(/недоступ|долго|время|не удалось|не запуст|больше 12/i)),null,{timeout:30000});
+ // CI software GPUs may spend tens of seconds in synchronous shader creation.
+ // Recovery states still fail immediately; this is not an application deadline.
+ await test.page.waitForFunction(()=>document.querySelector('.sanctuary')?.classList.contains('ready')||(!document.querySelector('#enter')?.disabled&&document.querySelector('#status')?.textContent.match(/недоступ|долго|время|не удалось|не запуст|больше 12/i)),null,{timeout:90000});
  assert.equal(await test.page.locator('.sanctuary').evaluate(el=>el.classList.contains('ready')),true,await test.page.locator('#status').textContent());
  assert.equal(await test.page.locator('#scene').getAttribute('aria-busy'),'false','First successful frame must end loading');
  assert.equal(await test.page.locator('#cancel-start').isVisible(),false);

@@ -4,14 +4,14 @@ const scene = q('.scene-frame');
 const views = { 0: { label: 'ворота', scale: 1, x: '0%', y: '0%' }, 2: { label: 'сад', scale: 1.22, x: '-8%', y: '0%' }, 4: { label: 'храм', scale: 1.6, x: '0%', y: '-4%' } };
 let renderer, playing = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 let raining = false, selectedView = 0, light = 100, raf = 0, busy = false;
-const STARTUP_LIMIT_MS = 12000;
+const MODULE_LOAD_LIMIT_MS = 12000;
 let startup = null;
 let rendererModule = null, moduleAttempt = 0;
 function loadRendererModule() {
   if (rendererModule) return Promise.resolve(rendererModule);
   // Browsers retain a failed module URL in the module map. A fresh local URL lets an
   // explicit retry recover from a failed download; successful exports are reused.
-  const moduleURL = './temple-renderer.js?v=polish2&attempt=' + (++moduleAttempt);
+  const moduleURL = './temple-renderer.js?v=polish3&attempt=' + (++moduleAttempt);
   return import(moduleURL).then(module => { rendererModule = module; return module; });
 }
 
@@ -122,7 +122,7 @@ function applyState() {
 }
 async function enter(options = {}) {
   if (busy || renderer) return;
-  const attempt = { stopped: false, started: performance.now(), timer: 0, paintTimer: 0 };
+  const attempt = { stopped: false, timer: 0, paintTimer: 0 };
   const interrupted = new Promise((resolve, reject) => { attempt.interrupt = reject; });
   startup = attempt;
   setBusy(true);
@@ -133,7 +133,7 @@ async function enter(options = {}) {
     q('#safe-start').hidden = false;
     q('#enter').textContent = 'Повторить 3D ↗';
     q('#status').textContent = 'Загрузка 3D заняла больше 12 секунд. Кадр и настройки сохранены. Можно повторить запуск или продолжить с кадром.';
-  }, STARTUP_LIMIT_MS);
+  }, MODULE_LOAD_LIMIT_MS);
   const current = () => startup === attempt && !attempt.stopped;
   const wait = promise => Promise.race([promise, interrupted]);
   q('#status').textContent = 'Открываем объёмную сцену… Кадр и настройки доступны. Запуск можно остановить.';
@@ -143,6 +143,10 @@ async function enter(options = {}) {
     // A timer yields to the UI without depending on animation frames, which stop in hidden tabs.
     await wait(new Promise(resolve => { attempt.paintTimer = setTimeout(resolve, 0); }));
     if (!current()) return;
+    // The deadline bounds only asynchronous loading/yield. JavaScript cannot preempt the
+    // synchronous WebGL constructor or first draw; a valid slower frame must remain usable.
+    clearTimeout(attempt.timer);
+    attempt.timer = 0;
     // The first frame uses the fast profile on every device; it avoids bloom compilation at startup.
     const created = createTempleNightRenderer(q('#world'), { ...options, quality: 'low', post: false });
     if (!current()) { created.dispose(); return; }
@@ -152,11 +156,6 @@ async function enter(options = {}) {
     renderer.setLight(light / 100);
     renderer.setView(selectedView);
     renderer.render(performance.now());
-    // JavaScript cannot interrupt a synchronous WebGL constructor/render. Check the elapsed
-    // deadline immediately afterwards, before the canvas can replace the usable poster.
-    if (performance.now() - attempt.started >= STARTUP_LIMIT_MS) {
-      throw new StartupStopped('timeout', '3D startup deadline exceeded');
-    }
     if (!current()) { releaseRenderer(); return; }
     sanctuary.classList.add('ready');
     q('#flat-mode').hidden = false;

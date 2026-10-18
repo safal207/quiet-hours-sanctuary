@@ -1,7 +1,7 @@
 /* Adapted from ThreeUI Community by Meng To (MIT). Safonov additions: view, rain, exposure controls. See THIRD_PARTY_NOTICES.md. */
 /* Canonical source: kage-github/index.html */
 /* Canonical source SHA-256: c8e06b90397ac246baf0ab6f32f5f6b570acc6fe03c7009f711b579fb72d9f49 */
-/* Exact included world sections SHA-256: b95f0f2d7824af6890e4f4a779376aa3ad75d7fdf01a70c742f3241c9970160d */
+/* Original included world sections SHA-256: b95f0f2d7824af6890e4f4a779376aa3ad75d7fdf01a70c742f3241c9970160d */
 /* Deliberately excluded: HTML page UI, chapter card viewports, cloth cards, generated page images, and the subset-font wordmark. */
 import * as THREE from "./vendor/three.module.js";
 import { canUsePostProcessing } from "./render-policy.js";
@@ -1081,6 +1081,8 @@ function initGL() {
   renderer.toneMapping = WANT_POST ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.setClearColor(0x05070a, 1);
+  // Every pass clears deliberately. Automatic clears would erase additive bloom.
+  renderer.autoClear = false;
   if (WANT_SHADOW) { renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; }
   maxAniso = renderer.capabilities.getMaxAnisotropy();
   scene = new THREE.Scene();
@@ -1294,7 +1296,7 @@ function buildShell() {
   /* the sky, hung far enough back that the whole frustum sits inside it */
   const sky = new THREE.Mesh(new THREE.PlaneGeometry(360, 190),
     new THREE.MeshBasicMaterial({ color: hdr(.60, .70, .80), map: tx(texSky()),
-      depthWrite: false, fog: false, toneMapped: false }));
+      depthWrite: false, fog: false, toneMapped: !WANT_POST }));
   sky.position.set(0, 62, -108); sky.renderOrder = 0; scene.add(sky);
   WORLD.sky = sky;
 
@@ -1383,7 +1385,7 @@ function buildTemple() {
   const tileMat = surface(rf, [1, 1], { color: 0x2b343a, roughness: .74, metalness: .10, normal: 1.4 });
   /* the paper the lamps burn through — the only thing in the hall that is
      allowed to be bright, and even then only just above white */
-  const paper = new THREE.MeshBasicMaterial({ color: hdr(1.06, .48, .18), fog: true, toneMapped: false });
+  const paper = new THREE.MeshBasicMaterial({ color: hdr(1.06, .48, .18), fog: true, toneMapped: !WANT_POST });
   const grid  = new THREE.MeshBasicMaterial({ map: tx(texShoji()), transparent: true,
     depthWrite: false, fog: true });
   WORLD.paper = paper;
@@ -1510,7 +1512,7 @@ function buildMoon() {
        written in linear, where the same look is ≈ .21. Reading the ratio
        straight off the reference is what left the moon a pale pink. */
     new THREE.MeshBasicMaterial({ map: tx(texMoon()), color: hdr(3.6, .64, .61),
-      transparent: true, depthWrite: false, fog: false, toneMapped: false }));
+      transparent: true, depthWrite: false, fog: false, toneMapped: !WANT_POST }));
   disc.position.set(MOON.x, MOON.y, MOON.z); disc.renderOrder = 1;
   scene.add(disc); WORLD.moon = disc;
 
@@ -1616,7 +1618,7 @@ function buildLantern(x, z, s, y) {
 
   const box = new THREE.Mesh(new THREE.BoxGeometry(.50, .50, .50), dark);
   box.position.y = 1.66; box.castShadow = true; g.add(box);
-  const paneMat = new THREE.MeshBasicMaterial({ color: hdr(2.3, .30, .085), fog: false, toneMapped: false });
+  const paneMat = new THREE.MeshBasicMaterial({ color: hdr(2.3, .30, .085), fog: false, toneMapped: !WANT_POST });
   [[0, 0, .256, 0], [0, 0, -.256, Math.PI], [.256, 0, 0, Math.PI / 2], [-.256, 0, 0, -Math.PI / 2]].forEach(p => {
     const pane = new THREE.Mesh(new THREE.PlaneGeometry(.34, .34), paneMat);
     pane.position.set(p[0], 1.66, p[2]); pane.rotation.y = p[3]; g.add(pane);
@@ -1847,7 +1849,7 @@ function buildAtmosphere() {
       ' p.x += sin(uT*0.36 + aSeed*22.0)*0.85;\n' +
       ' p.z += cos(uT*0.29 + aSeed*17.0)*0.7;\n' +
       ' vec4 mv = modelViewMatrix * vec4(p,1.0);\n' +
-      ' vA = (0.25+aSeed*0.75) * smoothstep(11.5,7.0,p.y) * smoothstep(0.0,1.4,p.y);\n' +
+      ' vA = (0.25+aSeed*0.75) * (1.0-smoothstep(7.0,11.5,p.y)) * smoothstep(0.0,1.4,p.y);\n' +
       ' gl_PointSize = uSize*(0.010+aSeed*0.020)/max(-mv.z,0.6);\n' +
       ' gl_Position = projectionMatrix * mv; }',
     fragmentShader:
@@ -1882,7 +1884,7 @@ function buildAtmosphere() {
         'void main(){ vec3 p=position;\n' +
         ' float y = mod(p.y - uT*aSpeed, 17.0);\n' +
         ' p.y = y + aTop*aLen;\n' +
-        ' vA = smoothstep(0.0,3.0,y)*smoothstep(17.0,11.0,y);\n' +
+        ' vA = smoothstep(0.0,3.0,y)*(1.0-smoothstep(11.0,17.0,y));\n' +
         ' gl_Position = projectionMatrix * modelViewMatrix * vec4(p,1.0); }',
       fragmentShader: 'varying float vA;\nvoid main(){ gl_FragColor = vec4(0.55,0.74,0.82, vA*0.024); }'
     }));
@@ -2235,9 +2237,9 @@ function initPost() {
       ' c = aces(c);\n' +
       ' float l = dot(c, vec3(0.2126,0.7152,0.0722));\n' +
       ' c = mix(vec3(l), c, uSat);\n' +
-      ' c = mix(c, c*vec3(0.74,1.03,1.11), smoothstep(0.55,0.0,l)*0.80);\n' +    /* teal shadows */
+      ' c = mix(c, c*vec3(0.74,1.03,1.11), (1.0-smoothstep(0.0,0.55,l))*0.80);\n' +    /* teal shadows */
       ' c = mix(c, c*vec3(1.035,0.995,0.968), smoothstep(0.50,1.0,l)*0.26);\n' + /* warm highs   */
-      ' float v = smoothstep(1.22, 0.26, length(d*vec2(1.0,0.94))*1.42);\n' +
+      ' float v = (1.0-smoothstep(0.26, 1.22, length(d*vec2(1.0,0.94))*1.42));\n' +
       ' c *= mix(1.0, v, uVig);\n' +
       ' float g = fract(sin(dot(vUv*uRes + uT*137.0, vec2(12.9898,78.233)))*43758.5453);\n' +
       ' c += (g-0.5)*uGrain;\n' +
@@ -2263,14 +2265,14 @@ function renderPost() {
   POST.bright.uniforms.tS.value = POST.scene.texture;
   pass(POST.bright, L[0].a);
   for (let i = 0; i < L.length; i++) {
-    if (i > 0) { POST.up.blending = THREE.NoBlending; POST.up.uniforms.uAmt.value = 1; POST.up.uniforms.tS.value = L[i - 1].a; pass(POST.up, L[i].a); }
-    POST.blur.uniforms.tS.value = L[i].a; POST.blur.uniforms.uDir.value.set(1 / L[i].w, 0); pass(POST.blur, L[i].b);
-    POST.blur.uniforms.tS.value = L[i].b; POST.blur.uniforms.uDir.value.set(0, 1 / L[i].h); pass(POST.blur, L[i].a);
+    if (i > 0) { POST.up.blending = THREE.NoBlending; POST.up.uniforms.uAmt.value = 1; POST.up.uniforms.tS.value = L[i - 1].a.texture; pass(POST.up, L[i].a); }
+    POST.blur.uniforms.tS.value = L[i].a.texture; POST.blur.uniforms.uDir.value.set(1 / L[i].w, 0); pass(POST.blur, L[i].b);
+    POST.blur.uniforms.tS.value = L[i].b.texture; POST.blur.uniforms.uDir.value.set(0, 1 / L[i].h); pass(POST.blur, L[i].a);
   }
   POST.up.blending = THREE.AdditiveBlending; POST.up.uniforms.uAmt.value = .52;
-  for (let i = L.length - 1; i > 0; i--) { POST.up.uniforms.tS.value = L[i].a; pass(POST.up, L[i - 1].a, true); }
+  for (let i = L.length - 1; i > 0; i--) { POST.up.uniforms.tS.value = L[i].a.texture; pass(POST.up, L[i - 1].a, true); }
   POST.comp.uniforms.tS.value = POST.scene.texture;
-  POST.comp.uniforms.tB.value = L[0].a;
+  POST.comp.uniforms.tB.value = L[0].a.texture;
   pass(POST.comp, null);
 }
 
@@ -2328,9 +2330,9 @@ function applyCamera() {
   if (Math.abs(camera.fov - fov) > 1e-4) { camera.fov = fov; camera.updateProjectionMatrix(); }
 }
 
-/* The host lifecycle below changes only ownership of the authored renderer.
-   Scene construction, materials, shaders, post passes, camera composition,
-   procedural textures, weather, and pointer atmosphere remain source-exact. */
+/* Host lifecycle and reliability adaptations. Geometry and composition derive
+   from the credited world; bloom texture bindings, explicit clears, defined
+   GLSL ramps and direct-render exposure handling are maintained here. */
 function resize() {
   const w = vpW(), h = vpH();
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, DPR_CAP) * PERF.scale);
@@ -2414,19 +2416,20 @@ function render() {
 }
 
 let disposed = false;
-let tPrev = 0;
+let tPrev = null;
+let paused = REDUCE;
 let clock = 0;
 let fadeIn = 1;
 
 function renderFrame(now) {
   if (disposed) return;
-  const raw = tPrev ? (now - tPrev) / 1000 : 0;
+  const raw = paused || tPrev === null ? 0 : Math.max(0, (now - tPrev) / 1000);
   const dt = Math.min(raw, .05);
   tPrev = now;
   clock += dt;
   fadeIn = 1;
 
-  if (!PERF.locked && clock > 2.2) {
+  if (!paused && !PERF.locked && clock > 2.2) {
     PERF.acc += raw; PERF.n++;
     if (PERF.n >= 40 || PERF.acc > .9) {
       const avg = PERF.acc / PERF.n; PERF.acc = 0; PERF.n = 0;
@@ -2437,11 +2440,17 @@ function renderFrame(now) {
 
   RIG.smooth = REDUCE ? RIG.prog : damp(RIG.smooth, RIG.prog, 3.4, dt);
   RIG.intro = 1;
-  RIG.mx = damp(RIG.mx, RIG.tmx, 2.6, dt);
-  RIG.my = damp(RIG.my, RIG.tmy, 2.6, dt);
+  RIG.mx = paused ? RIG.tmx : damp(RIG.mx, RIG.tmx, 2.6, dt);
+  RIG.my = paused ? RIG.tmy : damp(RIG.my, RIG.tmy, 2.6, dt);
   applyCamera();
   updateWorld(dt);
   render();
+}
+
+function resetTiming() {
+  tPrev = null;
+  PERF.acc = 0;
+  PERF.n = 0;
 }
 
 function disposeMaterial(material, textures) {
@@ -2527,8 +2536,14 @@ return {
   postprocessing: WANT_POST,
   setView(value) { RIG.prog = clamp(value, 0, 5); RIG.smooth = RIG.prog; },
   setRain(enabled) { if(WORLD.rain) WORLD.rain.visible=!!enabled; WORLD.ripples.forEach(r=>r.visible=!!enabled); },
-  setLight(value) { const exposure=clamp(value, .6, 1.4); if(POST.comp) POST.comp.uniforms.uExp.value=.62*exposure; else renderer.toneMappingExposure=exposure; },
+  setLight(value) {
+    const exposure = Number.isFinite(value) ? clamp(value, .6, 1.4) : 1;
+    if (POST.comp) POST.comp.uniforms.uExp.value = .62 * exposure;
+    else renderer.toneMappingExposure = exposure;
+  },
   render: renderFrame,
+  setPaused(value) { paused = !!value; resetTiming(); },
+  resetTiming,
   resize,
   reducedMotion: REDUCE,
   setPointer(x, y, inside = true) {

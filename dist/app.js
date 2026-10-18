@@ -80,10 +80,11 @@ async function enter(options = {}) {
   q('#safe-start').disabled = true;
   q('#status').textContent = 'Собираем 3D-сцену… 2D остаётся доступным. Первый запуск может занять несколько секунд.';
   try {
-    const { createTempleNightRenderer } = await import('./temple-renderer.js?v=2');
+    const { createTempleNightRenderer } = await import('./temple-renderer.js?v=light4');
     // Let the loading message paint before generating procedural textures.
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     renderer = createTempleNightRenderer(q('#world'), options);
+    renderer.setPaused?.(!playing);
     renderer.setRain(raining);
     renderer.setLight(light / 100);
     renderer.setView(selectedView);
@@ -115,6 +116,7 @@ q('#rain').addEventListener('click', () => { raining = !raining; applyState(); }
 q('#light').addEventListener('input', event => { light = Number(event.target.value); applyState(); });
 q('#pause').addEventListener('click', () => {
   playing = !playing;
+  renderer?.setPaused?.(!playing);
   if (!playing) stopFrames();
   syncFallback();
   if (playing) updateFrame();
@@ -151,11 +153,14 @@ q('#world').addEventListener('webglcontextrestored', () => {
   if (!renderer) q('#status').textContent = 'WebGL восстановлен. Продолжайте в 2D или повторите облегчённый 3D-запуск.';
 });
 document.addEventListener('visibilitychange', () => {
+  renderer?.resetTiming?.();
   if (document.hidden) stopFrames(); else updateFrame();
 });
 window.addEventListener('pagehide', event => {
   stopFrames();
   if (!event.persisted) { renderer?.dispose(); renderer = null; }
 });
-window.addEventListener('pageshow', event => { if (event.persisted) updateFrame(); });
+window.addEventListener('pageshow', event => {
+  if (event.persisted) { renderer?.resetTiming?.(); updateFrame(); }
+});
 syncFallback();

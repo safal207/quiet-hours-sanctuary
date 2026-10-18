@@ -29,7 +29,7 @@ function harness({failAt=[],reducedMotion=false}={}){
  q('.controls').querySelectorAll=queryAll;
  const document=q('document');document.hidden=false;document.querySelector=q;document.querySelectorAll=queryAll;document.createElement=tag=>new Element(tag);
  const window=q('window');window.innerWidth=1280;window.innerHeight=850;
- function create(){const index=renderers.length;const r={calls:0,disposed:0,reducedMotion:false,render(){this.calls++;timeline.push('render-attempt');if(this.calls===failAt[index])throw new Error('Injected render failure #'+index+':'+this.calls);firstDraw=true;timeline.push('render-success')},dispose(){this.disposed++;timeline.push('dispose')},resize(){},setPointer(){},setView(value){this.view=value},setRain(value){this.rain=value},setLight(value){this.light=value},getQuality(){return'balanced'}};renderers.push(r);timeline.push('create');return r}
+ function create(){const index=renderers.length;const r={calls:0,disposed:0,reducedMotion:false,paused:false,timingResets:0,setPaused(value){this.paused=value;this.timingResets++},resetTiming(){this.timingResets++},render(){this.calls++;timeline.push('render-attempt');if(this.calls===failAt[index])throw new Error('Injected render failure #'+index+':'+this.calls);firstDraw=true;timeline.push('render-success')},dispose(){this.disposed++;timeline.push('dispose')},resize(){},setPointer(){},setView(value){this.view=value},setRain(value){this.rain=value},setLight(value){this.light=value},getQuality(){return'balanced'}};renderers.push(r);timeline.push('create');return r}
  const context={document,window,location:{search:'',href:'https://example.test/'},navigator:{hardwareConcurrency:4},URLSearchParams,URL,matchMedia:()=>({matches:reducedMotion,addEventListener(){},removeEventListener(){}}),performance:{now:()=>time},requestAnimationFrame(fn){const id=++nextRaf;raf.set(id,fn);return id},cancelAnimationFrame(id){raf.delete(id)},setTimeout,clearTimeout,queueMicrotask,console:{error:(...a)=>errors.push(a),warn:(...a)=>errors.push(a),log(){}},__loadRenderer(){loadCalls++;return load.promise},ResizeObserver:class{observe(){}disconnect(){}}};
  window.matchMedia=context.matchMedia;window.requestAnimationFrame=context.requestAnimationFrame;window.cancelAnimationFrame=context.cancelAnimationFrame;
  vm.runInNewContext(source,context,{filename:appPath});
@@ -50,7 +50,8 @@ function failedState(h,label){assert.equal(h.q('.sanctuary').classList.contains(
 }
 {
  const h=harness({reducedMotion:true});assert.ok(h.q('.sanctuary').classList.contains('paused'),'Reduced-motion preference pauses rain at initialization');assert.equal(h.q('#pause').getAttribute('aria-pressed'),'true');
- console.log('PASS reduced-motion initial state');
+ const pending=h.click();h.release();await h.drive(pending);assert.equal(h.renderers[0].paused,true,'Reduced-motion 3D starts with a frozen animation clock');assert.equal(h.raf.size,0);
+ console.log('PASS reduced-motion initial state and frozen 3D clock');
 }
 // Delayed imports cannot activate the stage; a double click must not import twice.
 {
@@ -71,6 +72,16 @@ function failedState(h,label){assert.equal(h.q('.sanctuary').classList.contains(
 {
  const h=harness(),pending=h.click();h.release();await h.drive(pending);assert.ok((h.q('#world').listeners.get('webglcontextlost')||[]).length,'Canvas must handle WebGL context loss');const prevented=await h.q('#world').emit('webglcontextlost');assert.equal(prevented,true,'Context loss default must be prevented for restoration');failedState(h,'context loss');
  console.log('PASS WebGL context-loss cleanup');
+}
+// Paused UI changes may redraw but must keep the renderer clock frozen.
+{
+ const h=harness(),pending=h.click();h.release();await h.drive(pending);const r=h.renderers[0];assert.equal(r.paused,false);
+ await h.q('#pause').emit('click');assert.equal(r.paused,true);assert.equal(h.raf.size,0);const before=r.calls;
+ h.q('#light').value='60';await h.q('#light').emit('input');assert.ok(r.calls>before,'Changing light redraws a paused frame');assert.equal(r.paused,true);assert.equal(h.raf.size,0);
+ const resets=r.timingResets;h.q('document').hidden=true;await h.q('document').emit('visibilitychange');h.q('document').hidden=false;await h.q('document').emit('visibilitychange');assert.equal(r.timingResets,resets+2,'Visibility boundaries reset renderer timing');assert.equal(r.paused,true);
+ await h.q('#pause').emit('click');assert.equal(r.paused,false);assert.ok(h.raf.size>0);
+ const cached=r.timingResets;await h.q('window').emit('pageshow',{persisted:true});assert.equal(r.timingResets,cached+1,'Back-forward cache restore resets timing');
+ console.log('PASS pause/light-control wiring and visibility/bfcache timing reset');
 }
 // Returning to the source illustration must preserve current controls and dispose 3D.
 {

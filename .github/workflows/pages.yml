@@ -16,12 +16,29 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm run check
+      - name: Install bounded browser QA dependencies
+        run: npm install --no-save --package-lock=false playwright@1.55.0 pngjs@7.0.0
+      - name: Install Chromium for software WebGL
+        run: npx playwright install --with-deps chromium
+      - name: Render actual 3D and verify lighting
+        run: node scripts/verify-webgl.mjs temple
+      - name: Retain rendered models and QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-webgl-temple
+          path: |
+            qa-webgl
+            dist/assets/scene-preview.png
+          retention-days: 14
+          if-no-files-found: error
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

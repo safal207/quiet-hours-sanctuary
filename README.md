@@ -64,3 +64,22 @@ Low/touch mode skips HDR bloom. Desktop bloom is gated by half-float render-targ
 ## Repeatable lesson
 
 Open the [three-step lesson](https://safal207.github.io/quiet-hours-sanctuary/#process). Step 1 restores the original: gates, 100% light, no rain. Step 2 applies 130% light and a separate rain layer. Step 3 keeps that atmosphere and focuses on the temple. The result bar states the exact active parameters. Students can build two moods, record their settings and explain the visible difference. The same controls apply to the optional 3D scene, but it is a separately constructed environment, not a conversion of the SVG.
+
+
+## Lighting regression matrix
+
+The light slider controls exposure between 60% and 140%. Full mode adds bloom and grading; lightweight mode uses direct tone mapping. They share responsive controls, not a promise of identical pixels.
+
+| Check | Action | Expected result | Evidence |
+| --- | --- | --- | --- |
+| HDR bloom input | Render the full scene | Every sampler receives a texture; no buffer samples itself | Node render-pass contract, passed |
+| Bloom accumulation | Upsample all four levels | Additive passes preserve the previous light buffer | Node render-pass contract, passed |
+| Shader ramps | Build high and low scenes | Every literal `smoothstep` has increasing edges | Material/shader inspection, passed |
+| Low-mode emitters | Change exposure 60 → 100 → 140% | Sky, moon, paper and lantern panes participate in tone mapping | Actual Three material contract, passed; visual comparison required |
+| Safe input | Pass 0.6, 1, 1.4, out-of-range and non-finite values | Values stay finite within 0.6–1.4; invalid values reset to 1 | Node API contract, passed |
+| Pause + controls | Pause, move the light slider, change camera | Frame updates while the light animation phase remains fixed | Host wiring and actual Three state, passed |
+| Resume and hidden tab | Resume after pause; hide/restore; return from browser history | No time jump or false adaptive downscaling | Host and renderer timing contracts, passed |
+| Real rendered pixels | Compare 60%, 100%, 140% in high and low; toggle rain; resize | Visible scene, brighter exposure in order, no shader or WebGL errors | Browser/GPU run required; see CI artifacts when available |
+| Physical devices | Repeat on Android Chrome/WebView and iOS Safari | Controls, readable scene and stable lighting | Requires real-device verification |
+
+Renderer fixes bind `WebGLRenderTarget.texture` to bloom samplers, disable automatic clearing between additive passes, replace undefined descending GLSL ramps, and include direct-mode emitters in exposure. `setPaused(boolean)` freezes animation time while allowing redraws; `resetTiming()` excludes time spent in a hidden tab from the frame budget. These changes are reliability adaptations to the credited ThreeUI world.

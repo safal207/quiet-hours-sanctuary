@@ -1,15 +1,20 @@
-// Runs only on the GitHub Actions runner. Chromium uses software WebGL (SwiftShader), not a phone GPU.
+// Runs only on GitHub Actions. Default: Chromium / SwiftShader.
+// Optional third argument: browser=firefox or browser=webkit (headed Xvfb / Mesa).
+// These Linux software renderers do not certify a physical device or Safari.
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile,stat} from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import {chromium} from 'playwright';
+import {chromium,firefox,webkit} from 'playwright';
 import {PNG} from 'pngjs';
 
-const root=path.resolve('dist'),out=path.resolve('qa-webgl');
 const kind=process.argv[2];
+const browserName=(process.argv[3]||'chromium').replace(/^(?:--)?browser=/,'');
 assert.ok(['room','temple'].includes(kind),'Expected room or temple argument');
-await mkdir(out,{recursive:true});await mkdir(path.join(root,'assets'),{recursive:true});
+assert.ok(['chromium','firefox','webkit'].includes(browserName),'Expected browser=chromium, browser=firefox, or browser=webkit');
+const root=path.resolve('dist'),out=path.resolve(browserName==='chromium'?'qa-webgl':`qa-webgl-${browserName}`);
+await mkdir(out,{recursive:true});
+if(browserName==='chromium')await mkdir(path.join(root,'assets'),{recursive:true});
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png'};
 const server=createServer(async(req,res)=>{
  try{
@@ -22,8 +27,31 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const origin=`http://127.0.0.1:${server.address().port}`;
-const report={scene:kind,engine:'Chromium / ANGLE SwiftShader software WebGL',date:new Date().toISOString(),commit:process.env.GITHUB_SHA||null,status:'running',cases:[],errors:[],limits:['Software WebGL does not certify an Android/iOS device GPU.','Pixel luminance checks detect blank scenes and lighting regressions; aesthetic review of screenshots remains separate.']};
-const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
+const engines={chromium:'Chromium / ANGLE SwiftShader software WebGL',firefox:'Firefox / Linux Mesa software WebGL (headed Xvfb)',webkit:'Playwright WebKit / Linux Mesa software WebGL (headed Xvfb; not Safari)'};
+const report={scene:kind,browser:browserName,browserVersion:null,engine:engines[browserName],date:new Date().toISOString(),commit:process.env.GITHUB_SHA||null,status:'running',stage:'launch',graphics:null,cases:[],errors:[],limits:['Software WebGL does not certify an Android/iOS device GPU.','Playwright WebKit on Linux is not Safari or an iPhone/iPad browser.','Pixel luminance checks detect blank scenes and lighting regressions; aesthetic review of screenshots remains separate.']};
+let browser;
+const launchOptions=browserName==='chromium'
+ ?{headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']}
+ :browserName==='firefox'
+ ?{headless:false,firefoxUserPrefs:{'webgl.disabled':false,'webgl.force-enabled':true,'webgl.forbid-software':false,'gfx.webrender.all':true,'gfx.webrender.software':true}}
+ :{headless:false};
+// Probe support on a separate canvas. It never substitutes for the real scene.
+async function graphicsSupport(){
+ const page=await browser.newPage();
+ try{return await page.evaluate(()=>{
+  const errors=[];const contexts={};
+  for(const name of ['webgl','webgl2']){
+   const canvas=document.createElement('canvas');
+   canvas.addEventListener('webglcontextcreationerror',event=>errors.push({context:name,message:event.statusMessage||'WebGL context creation failed'}));
+   const gl=canvas.getContext(name);
+   if(!gl){contexts[name]=null;continue}
+   const info=gl.getExtension('WEBGL_debug_renderer_info');
+   contexts[name]={version:gl.getParameter(gl.VERSION),vendor:info?gl.getParameter(info.UNMASKED_VENDOR_WEBGL):gl.getParameter(gl.VENDOR),renderer:info?gl.getParameter(info.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),shadingLanguage:gl.getParameter(gl.SHADING_LANGUAGE_VERSION),maxTextureSize:gl.getParameter(gl.MAX_TEXTURE_SIZE),maxRenderbufferSize:gl.getParameter(gl.MAX_RENDERBUFFER_SIZE)};
+   gl.getExtension('WEBGL_lose_context')?.loseContext();
+  }
+  return{contexts,errors};
+ })}finally{await page.close()}
+}
 function metrics(bytes){
  const image=PNG.sync.read(bytes);let sum=0,sq=0,min=255,max=0,clipped=0,black=0;
  for(let i=0;i<image.data.length;i+=4){const r=image.data[i],g=image.data[i+1],b=image.data[i+2],v=.2126*r+.7152*g+.0722*b;sum+=v;sq+=v*v;min=Math.min(min,v);max=Math.max(max,v);if(r>249&&g>249&&b>249)clipped++;if(v<2)black++}
@@ -57,14 +85,26 @@ async function snapshot(test,id,{poster=false}={}){
  assert.ok(m.std>4&&m.max-m.min>30,`${id}: canvas is blank or too uniform: ${JSON.stringify(m)}`);
  assert.ok(m.blackFraction<.98&&m.clippedFraction<.5,`${id}: scene mostly black or white`);
  assert.deepEqual(errors,[],`${id}: console / shader errors`);
- if(poster)await writeFile(path.join(root,'assets','scene-preview.png'),bytes);
- pass(id,{quality:test.quality,viewport:m.width+'×'+m.height,metrics:m,image:`${id}.png`,poster});
+ const posterWritten=poster&&browserName==='chromium';
+ if(posterWritten)await writeFile(path.join(root,'assets','scene-preview.png'),bytes);
+ pass(id,{quality:test.quality,viewport:m.width+'×'+m.height,metrics:m,image:`${id}.png`,poster:posterWritten});
  await page.evaluate(()=>{delete document.body.dataset.capture});
  return{bytes,m};
 }
 async function light(test,value){await test.page.locator('#light').evaluate((input,value)=>{input.value=String(value);input.dispatchEvent(new Event('input',{bubbles:true}))},value);assert.equal(await test.page.locator('output').textContent(),`${value}%`)}
 async function assertNoOverflow(test){const overflow=await test.page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);assert.equal(overflow,false);const sliderBox=await test.page.locator('#light').boundingBox();assert.ok(sliderBox?.width>40);pass(`${test.quality}-${test.width}-controls-fit`)}
 try{
+ browser=await({chromium,firefox,webkit}[browserName]).launch(launchOptions);
+ report.browserVersion=browser.version();
+ if(browserName!=='chromium'){
+  report.stage='support-probe';
+  report.graphics=await graphicsSupport();
+  if(!report.graphics.contexts.webgl&&!report.graphics.contexts.webgl2){
+   report.status='unsupported';
+   throw new Error(`${browserName} cannot create WebGL 1 or 2 in this Linux Mesa runner. No scene or lighting assertions were skipped as passing.`);
+  }
+ }
+ report.stage='scene-checks';
  const desktop=await open();await assertNoOverflow(desktop);
  if(kind==='room'){
   await desktop.page.evaluate(()=>window.__preview.setPreset('evening'));
@@ -114,6 +154,6 @@ try{
   if(kind==='temple'&&width===320)assert.ok(await mobile.page.evaluate(()=>window.__preview.frames)>paused,'Normal animation resumes after visibility');
   assert.deepEqual(mobile.errors,[]);pass(`${kind}-mobile-${width}-visibility-origin`);await mobile.context.close();
  }
- report.status='passed';
-}catch(error){report.status='failed';report.errors.push(error.stack||String(error));console.error(error);process.exitCode=1}
-finally{await writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');await browser.close();await new Promise(resolve=>server.close(resolve))}
+ report.status='passed';report.stage='complete';
+}catch(error){if(report.status!=='unsupported')report.status='failed';report.errors.push(error.stack||String(error));console.error(error);process.exitCode=1}
+finally{await writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');if(browser)await browser.close();await new Promise(resolve=>server.close(resolve))}

@@ -1,0 +1,57 @@
+name: Real 3D in Firefox and WebKit
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dist/**'
+      - 'scripts/**'
+      - 'package.json'
+      - '.github/workflows/cross-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: cross-browser-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  render:
+    name: Real temple / ${{ matrix.browser }} / Mesa
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    env:
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      GDK_BACKEND: x11
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run check
+      - name: Install pinned renderer QA dependencies
+        run: npm install --no-save --package-lock=false playwright@1.55.0 pngjs@7.0.0
+      - name: Install browser and Linux software graphics
+        run: |
+          npx playwright install --with-deps ${{ matrix.browser }}
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils
+      - name: Check real WebGL, lights, cameras, and preview lifecycle
+        env:
+          QA_BROWSER: ${{ matrix.browser }}
+        run: |
+          mkdir -p "qa-webgl-$QA_BROWSER"
+          xvfb-run -a -s '-screen 0 1600x1200x24' sh -c '
+            glxinfo -B > "qa-webgl-$QA_BROWSER/mesa-info.txt" 2>&1
+            node scripts/verify-webgl.mjs temple "browser=$QA_BROWSER"
+          '
+      - name: Retain actual frames and diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-webgl-temple-${{ matrix.browser }}
+          path: qa-webgl-${{ matrix.browser }}
+          retention-days: 14
+          if-no-files-found: error

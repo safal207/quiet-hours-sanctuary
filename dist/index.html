@@ -1,2 +1,43 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1415"><title>Quiet Hours — место для паузы</title><meta name="description" content="Исследуйте атмосферный ночной храм: выберите точку обзора, дождь и свет."><link rel="stylesheet" href="style.css?v=2"><link rel="icon" href="assets/mark.svg" type="image/svg+xml"></head><body>
-<a class="skip" href="#controls">К управлению сценой</a><main><section class="sanctuary" aria-label="Интерактивный ночной сад"><canvas id="world" aria-label="Трёхмерный храм в ночном саду"></canvas><div id="poster" class="poster"><img src="assets/sanctuary.svg" alt="Графический пролог: храм, алые ворота и луна" width="1600" height="1000"></div><div class="vignette"></div><header><a class="logo" href="#">静 <span>QUIET HOURS</span></a><div class="header-right"><span>01 / THE NIGHT GARDEN</span><a href="#about">Об этом месте ↗</a></div></header><div class="chapter"><span class="hairline"></span>ДЫШИТЕ. ОСМОТРИТЕСЬ. ОСТАНЬТЕСЬ.</div><div class="title"><p class="eyebrow">A PLACE BETWEEN MOMENTS</p><h1>Побудьте<br><em>здесь.</em></h1><p>Красная луна. Свет фонарей.<br>И несколько минут без спешки.</p><button id="enter" class="enter">Войти в сад <span>↗</span></button><button id="safe-start" class="safe-start" type="button">Облегчённый запуск</button><p id="status" class="status" role="status" aria-live="polite">3D-сцена загрузится после нажатия.</p></div><div class="coordinates"><span>夜 · NIGHT</span><span>ВОЗМОЖНОСТЬ ОСТАНОВИТЬСЯ</span></div><div class="controls" id="controls"><div class="locations" role="group" aria-label="Точка обзора"><button data-view="0" aria-pressed="true" disabled><span>01</span> Ворота</button><button data-view="2" aria-pressed="false" disabled><span>02</span> Сад</button><button data-view="4" aria-pressed="false" disabled><span>03</span> Храм</button></div><div class="atmosphere"><button id="rain" aria-pressed="true" disabled>☂ Дождь</button><label for="light">Свет <input id="light" type="range" min="60" max="140" value="100" disabled><output id="light-value">100%</output></label><button id="pause" aria-pressed="false" disabled>Ⅱ Пауза</button></div></div></section><section id="about" class="about"><p class="eyebrow">AN INTERACTIVE LANDSCAPE</p><h2>Маленькое путешествие.<br><em>В собственном темпе.</em></h2><div class="notes"><p>Выберите ворота, сад или верхний храм. Двигайте указателем, чтобы слегка изменить взгляд. Уберите дождь, настройте свет или остановите движение.</p><p>Это художественная цифровая сцена. На телефонах по умолчанию отключены тяжёлые эффекты. Кнопка «Облегчённый запуск» также доступна на компьютере. Если 3D недоступно, остаётся графический пролог.</p></div><footer><p>Сцена — <a href="https://github.com/MengTo/threeui">ThreeUI Community / Meng To</a> · MIT.<br>Интерфейс, управление и адаптация — Алексей Сафонов, с помощью ИИ.</p><a href="https://github.com/safal207/quiet-hours-sanctuary">Исходники проекта ↗</a></footer></section></main><script type="module" src="app.js?v=2"></script></body></html>
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1415">
+  <title>Quiet Hours — как меняется атмосфера сцены</title>
+  <meta name="description" content="Преобразуйте иллюстрацию ночного храма: исходник, свет и дождь, финальный кадр. Попробуйте дополнительную 3D-сцену.">
+  <link rel="stylesheet" href="style.css?v=3"><link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+</head>
+<body>
+<a class="skip" href="#controls">К управлению сценой</a>
+<main>
+<section class="sanctuary" aria-label="Интерактивный ночной сад">
+  <header><a class="logo" href="#">静 <span>QUIET HOURS</span></a><nav class="header-right" aria-label="Навигация"><a href="#process">Как это работает ↓</a><a href="#about">О проекте ↗</a></nav></header>
+  <div class="hero-grid">
+    <div class="title"><p class="eyebrow">A PLACE BETWEEN MOMENTS</p><h1>Побудьте<br><em>здесь.</em></h1><p>Одна иллюстрация. Три действия.<br>Измените свет, дождь и кадр — результат появится сразу.</p><a class="process-link" href="#process">Пройти преобразование по шагам ↓</a><p class="mode-note">Начните с интерактивной 2D-иллюстрации. Объёмную сцену можно включить отдельно.</p></div>
+    <div class="scene-workspace">
+      <div class="scene-frame" id="scene" tabindex="-1" aria-label="Результат преобразования">
+        <canvas id="world" aria-label="Дополнительная трёхмерная сцена храма"></canvas>
+        <div id="poster" class="poster"><img src="assets/sanctuary.svg" alt="Авторская 2D-иллюстрация: ночной храм, алые ворота и красная луна" width="1600" height="1000"><div class="rain-overlay" aria-hidden="true"></div></div>
+        <div class="vignette" aria-hidden="true"></div>
+        <span class="scene-badge" id="mode">2D · иллюстрация</span><span class="scene-caption" id="scene-caption">Исходник · общий план</span>
+      </div>
+      <div class="controls" id="controls">
+        <div class="locations" role="group" aria-label="Кадр или точка обзора"><button data-view="0" aria-pressed="true"><span>01</span> Ворота</button><button data-view="2" aria-pressed="false"><span>02</span> Сад</button><button data-view="4" aria-pressed="false"><span>03</span> Храм</button></div>
+        <div class="atmosphere"><button id="rain" aria-pressed="false">☂ Дождь</button><label for="light">Свет <input id="light" type="range" min="60" max="140" value="100"><output id="light-value">100%</output></label><button id="pause" aria-pressed="false">Ⅱ Пауза</button></div>
+      </div>
+      <div class="result-bar"><p id="result" role="status" aria-live="polite">2D-иллюстрация · ворота · свет 100% · без дождя</p><button id="reset" type="button">↺ Исходник</button></div>
+      <div class="upgrade"><div class="upgrade-actions"><button id="enter" class="enter" type="button">Включить 3D ↗</button><button id="safe-start" class="safe-start" type="button">Облегчённый 3D</button><button id="flat-mode" class="safe-start" type="button" hidden>Вернуться в 2D</button></div><p id="status" class="status" role="status" aria-live="polite">2D уже работает. Выберите кадр или измените свет. Для 3D потребуется WebGL.</p></div>
+    </div>
+  </div>
+</section>
+<section class="process" id="process" aria-labelledby="process-title">
+  <p class="eyebrow">FROM A STILL IMAGE TO AN ATMOSPHERE</p><h2 id="process-title">Что именно меняется?</h2><p class="process-intro">Нажимайте шаги по порядку и смотрите на сцену. В 2D меняются яркость, слой дождя и кадрирование исходного SVG. Дополнительный 3D-режим строит отдельную объёмную сцену.</p>
+  <ol class="process-steps">
+    <li><span class="step-number">01 / ИСХОДНИК</span><h3>Возьмите композицию</h3><p>Храм, ворота и луна уже нарисованы в SVG. Верните свет 100%, общий план и сухую погоду.</p><button type="button" data-process="original">Показать исходник ↑</button></li>
+    <li><span class="step-number">02 / АТМОСФЕРА</span><h3>Добавьте свет и дождь</h3><p>Повысим яркость до 130% и включим отдельный слой дождя. Геометрия изображения останется прежней.</p><button type="button" data-process="atmosphere">Применить атмосферу ↑</button></li>
+    <li><span class="step-number">03 / РЕЗУЛЬТАТ</span><h3>Выберите главный объект</h3><p>Приблизим храм. В 2D это кадрирование картинки, в 3D — перемещение камеры. Меняйте параметры и сравнивайте.</p><button type="button" data-process="result">Собрать финальный кадр ↑</button></li>
+  </ol>
+  <p class="exercise"><strong>Задание ученику:</strong> создайте спокойный и драматичный варианты этой сцены. Запишите три параметра каждого: свет, дождь, кадр. Объясните, какой из них сильнее изменил настроение.</p>
+</section>
+<section id="about" class="about"><p class="eyebrow">AN INTERACTIVE LANDSCAPE</p><h2>Маленькое путешествие.<br><em>В собственном темпе.</em></h2><div class="notes"><p>2D-режим работает без WebGL: кнопки меняют кадрирование, ползунок — яркость, дождь — отдельный анимированный слой. Пауза останавливает движение дождя. «Исходник» всегда возвращает начальные параметры.</p><p>3D — самостоятельная художественная сцена на Three.js, а не восстановление объёма из этой картинки. На телефонах отключены тяжёлые эффекты. Если 3D недоступно, управление продолжит работать в 2D. Для людей с предпочтением уменьшенного движения анимация изначально приостановлена.</p></div><footer><p>3D-сцена — <a href="https://github.com/MengTo/threeui">ThreeUI Community / Meng To</a> · MIT.<br>2D-иллюстрация, интерфейс и адаптация — Алексей Сафонов, с помощью ИИ.</p><a href="https://github.com/safal207/quiet-hours-sanctuary">Исходники проекта ↗</a></footer></section>
+</main><script type="module" src="app.js?v=3"></script>
+</body></html>

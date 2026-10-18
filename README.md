@@ -2,7 +2,7 @@
 
 An atmospheric temple experience built around the free ThreeUI Community scene.
 
-Ночной сад: три точки обзора, управление дождём и светом, пауза и запуск 3D по желанию посетителя.
+Ночной сад: интерактивная 2D-иллюстрация доступна сразу; отдельная 3D-сцена запускается по желанию. Три повторяемых шага показывают, как исходник превращается в атмосферный кадр.
 
 ![Original graphic prologue — the live 3D temple is a separate licensed scene](dist/assets/sanctuary.svg)
 
@@ -16,7 +16,9 @@ An atmospheric temple experience built around the free ThreeUI Community scene.
 
 ## Features
 
-- Lazy WebGL loading with an original graphic prologue
+- Immediately usable 2D SVG illustration: brightness, rain overlay, framing and reset
+- Three repeatable teaching presets: original → atmosphere → final framing
+- Optional lazy WebGL scene with a visible return to 2D
 - Three camera viewpoints, real rain/ripple visibility and exposure controls
 - Pause, reduced-motion preference and background-tab suspension
 - Local Three.js runtime with no CDN or external textures
@@ -42,8 +44,9 @@ Checks cover local links, unique HTML IDs, JavaScript syntax and relevant state/
 ## Scope and limitations
 
 - The base temple world is by Meng To / ThreeUI Community (MIT), not an original Safonov model.
-- New contribution: visual identity, responsive page, control API, lifecycle integration, graphic prologue and documentation.
-- WebGL is required for the scene. The graphic prologue remains available otherwise.
+- New contribution: visual identity, responsive page, control API, lifecycle integration, interactive 2D illustration, teaching steps and documentation.
+- WebGL is required only for the optional 3D scene. The 2D controls work before loading, during loading and after a WebGL error.
+- 2D framing is CSS cropping/scaling of a prepared SVG. It does not reconstruct 3D geometry from an image.
 - Device FPS and real-browser rendering have not been measured in this environment.
 
 ## Credits and licensing
@@ -54,6 +57,10 @@ Creative direction and implementation: Alexey Safonov, with AI assistance. Code 
 
 ## Startup and mobile recovery
 
-Low/touch mode skips HDR bloom. Desktop bloom is gated by half-float render-target support. The canvas stays hidden until a successful first frame, and both initial and later render failures return to a working Retry action. An explicit lightweight start is available. CSS owns canvas dimensions so orientation changes can resize the drawing buffer.
+Low/touch mode skips HDR bloom. Desktop bloom is gated by half-float render-target support. The canvas stays hidden until a successful first frame, and both initial and later render failures return to the interactive 2D illustration with the current light, rain and framing preserved. Retry remains available. An explicit lightweight start is available. CSS owns canvas dimensions so orientation changes can resize the drawing buffer.
 
-`npm run check` now exercises startup/retry/context loss with a mocked host, GPU capability policy, and real Three scene assembly with mocked drawing. These are regression checks, not real-device GPU or visual certification.
+`npm run check` exercises the 2D transformation presets, reset, reduced-motion initialization, changes made while 3D is loading, explicit return to 2D, startup/retry/context loss with a mocked host, GPU capability policy, and real Three scene assembly with mocked drawing. These are regression checks, not real-device GPU or visual certification.
+
+## Repeatable lesson
+
+Open the [three-step lesson](https://safal207.github.io/quiet-hours-sanctuary/#process). Step 1 restores the original: gates, 100% light, no rain. Step 2 applies 130% light and a separate rain layer. Step 3 keeps that atmosphere and focuses on the temple. The result bar states the exact active parameters. Students can build two moods, record their settings and explain the visible difference. The same controls apply to the optional 3D scene, but it is a separately constructed environment, not a conversion of the SVG.

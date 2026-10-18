@@ -20,3 +20,7 @@ Catalog thumbnails and preview videos are loaded from `https://threeui.com`. The
 Some Community HTML scenes also reference open-source browser libraries from public CDNs and ThreeUI-managed public image/video endpoints. They require no account, token, or paid API. Those remote files are not redistributed by this repository.
 
 No Pro or Beta component source or component-specific asset is included.
+
+## Quiet Hours visitor preview
+
+`dist/assets/scene-preview.png` is an actual frame rendered from this repository's licensed ThreeUI temple scene, captured in Chromium software WebGL (1200 × 800, low profile). It replaces the SVG prologue on the visitor entry page. It is a raster preview of the existing model, not a generated reconstruction or a separate student submission. The source scene and preserved MIT notices above continue to apply.

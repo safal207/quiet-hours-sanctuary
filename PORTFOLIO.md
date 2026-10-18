@@ -6,9 +6,9 @@ Make a visual idea tangible through a small interactive experience that can be e
 
 ## Contribution
 
-- Immediate 2D illustration with working brightness, rain, framing and reset
+- Immediate real-model raster preview with working brightness, rain, framing and reset
 - Repeatable original / atmosphere / result learning steps
-- Optional lazy WebGL loading and explicit return to 2D
+- Optional low-profile WebGL loading, cancellation, bounded asynchronous waiting and explicit return to the model frame
 - Three camera viewpoints, real rain/ripple visibility and exposure controls
 - Pause, reduced-motion preference and background-tab suspension
 - Local Three.js runtime with no CDN or external textures

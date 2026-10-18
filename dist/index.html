@@ -1,43 +1,46 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1415">
-  <title>Quiet Hours — как меняется атмосфера сцены</title>
-  <meta name="description" content="Преобразуйте иллюстрацию ночного храма: исходник, свет и дождь, финальный кадр. Попробуйте дополнительную 3D-сцену.">
-  <link rel="stylesheet" href="style.css?v=3"><link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#100f10"><meta name="color-scheme" content="dark">
+  <title>Quiet Hours — ночь, свет и тишина</title>
+  <meta name="description" content="Ночной японский сад в 3D. Рассмотрите храм, измените освещение и дождь, соберите собственную атмосферу сцены.">
+  <link rel="stylesheet" href="style.css?v=polish1"><link rel="icon" href="assets/mark.svg" type="image/svg+xml">
 </head>
 <body>
 <a class="skip" href="#controls">К управлению сценой</a>
 <main>
 <section class="sanctuary" aria-label="Интерактивный ночной сад">
-  <header><a class="logo" href="#">静 <span>QUIET HOURS</span></a><nav class="header-right" aria-label="Навигация"><a href="#process">Как это работает ↓</a><a href="#about">О проекте ↗</a></nav></header>
+  <header><a class="logo" href="#" aria-label="Quiet Hours — главная"><span class="logo-mark" aria-hidden="true">静</span><span>QUIET HOURS<small>AN INTERACTIVE GARDEN</small></span></a><nav class="header-right" aria-label="Навигация"><a href="#process">Создать атмосферу <span aria-hidden="true">↙</span></a><a href="#about">О проекте <span aria-hidden="true">↗</span></a></nav></header>
   <div class="hero-grid">
-    <div class="title"><p class="eyebrow">A PLACE BETWEEN MOMENTS</p><h1>Побудьте<br><em>здесь.</em></h1><p>Одна иллюстрация. Три действия.<br>Измените свет, дождь и кадр — результат появится сразу.</p><a class="process-link" href="#process">Пройти преобразование по шагам ↓</a><p class="mode-note">Начните с интерактивной 2D-иллюстрации. Объёмную сцену можно включить отдельно.</p></div>
+    <div class="title"><p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> НОЧНОЙ ЯПОНСКИЙ САД</p><h1>Побудьте<br><em>здесь.</em></h1><p class="hero-copy">Алые клёны, тёплые фонари и луна над храмом. Выберите ракурс — и найдите своё настроение.</p><a class="process-link" href="#process">Собрать свою атмосферу <span aria-hidden="true">↓</span></a><div class="scene-note" aria-hidden="true"><span>01 / QUIET HOURS</span><p>Небольшое путешествие.<br>В вашем собственном темпе.</p></div></div>
     <div class="scene-workspace">
-      <div class="scene-frame" id="scene" tabindex="-1" aria-label="Результат преобразования">
-        <canvas id="world" aria-label="Дополнительная трёхмерная сцена храма"></canvas>
-        <div id="poster" class="poster"><img src="assets/sanctuary.svg" alt="Авторская 2D-иллюстрация: ночной храм, алые ворота и красная луна" width="1600" height="1000"><div class="rain-overlay" aria-hidden="true"></div></div>
+      <div class="workspace-heading"><p><span class="live-dot" aria-hidden="true"></span> THE MOONLIT SANCTUARY</p><span>静けさ / ТИШИНА</span></div>
+      <div class="scene-frame" id="scene" tabindex="-1" aria-label="Ночной храм — просмотр сцены">
+        <canvas id="world" aria-label="Интерактивная трёхмерная сцена храма"></canvas>
+        <div id="poster" class="poster"><img src="assets/scene-preview.png" alt="Кадр настоящей 3D-сцены: японский храм, алые ворота, клёны и большая красная луна" width="1200" height="800" fetchpriority="high"><div class="rain-overlay" aria-hidden="true"></div></div>
         <div class="vignette" aria-hidden="true"></div>
-        <span class="scene-badge" id="mode">2D · иллюстрация</span><span class="scene-caption" id="scene-caption">Исходник · общий план</span>
+        <span class="scene-badge" id="mode">Кадр 3D-сцены</span><span class="scene-caption" id="scene-caption">Ворота · свет 100%</span>
+        <div class="frame-corner" aria-hidden="true">NIGHT GARDEN<br>STUDY 001</div>
       </div>
       <div class="controls" id="controls">
         <div class="locations" role="group" aria-label="Кадр или точка обзора"><button data-view="0" aria-pressed="true"><span>01</span> Ворота</button><button data-view="2" aria-pressed="false"><span>02</span> Сад</button><button data-view="4" aria-pressed="false"><span>03</span> Храм</button></div>
-        <div class="atmosphere"><button id="rain" aria-pressed="false">☂ Дождь</button><label for="light">Свет <input id="light" type="range" min="60" max="140" value="100"><output id="light-value">100%</output></label><button id="pause" aria-pressed="false">Ⅱ Пауза</button></div>
+        <div class="atmosphere"><button id="rain" aria-pressed="false">☂ Дождь</button><label for="light"><span>Свет</span> <input id="light" type="range" min="60" max="140" value="100"><output id="light-value" for="light">100%</output></label><button id="pause" aria-pressed="false">Ⅱ Пауза</button></div>
       </div>
-      <div class="result-bar"><p id="result" role="status" aria-live="polite">2D-иллюстрация · ворота · свет 100% · без дождя</p><button id="reset" type="button">↺ Исходник</button></div>
-      <div class="upgrade"><div class="upgrade-actions"><button id="enter" class="enter" type="button">Включить 3D ↗</button><button id="safe-start" class="safe-start" type="button">Облегчённый 3D</button><button id="flat-mode" class="safe-start" type="button" hidden>Вернуться в 2D</button></div><p id="status" class="status" role="status" aria-live="polite">2D уже работает. Выберите кадр или измените свет. Для 3D потребуется WebGL.</p></div>
+      <div class="result-bar"><p id="result" role="status" aria-live="polite">Кадр сцены · ворота · свет 100% · без дождя</p><button id="reset" type="button" title="Вернуть исходный свет, общий план и сухую погоду">↺ Сбросить</button></div>
+      <div class="upgrade"><div class="upgrade-actions"><button id="enter" class="enter" type="button">Рассмотреть в 3D <span aria-hidden="true">↗</span></button><button id="safe-start" class="safe-start" type="button" hidden>Лёгкий режим</button><button id="cancel-start" class="cancel-start" type="button" hidden>Отменить запуск</button><button id="flat-mode" class="safe-start" type="button" hidden>Вернуться к кадру</button></div><p id="status" class="status" role="status" aria-live="polite">Перед вами кадр модели. Откройте 3D, чтобы перемещаться по саду.</p></div>
     </div>
   </div>
+  <div class="section-tail" aria-hidden="true"><span>СВЕТ · КОМПОЗИЦИЯ · ДВИЖЕНИЕ</span><span>SCROLL TO EXPLORE ↓</span></div>
 </section>
 <section class="process" id="process" aria-labelledby="process-title">
-  <p class="eyebrow">FROM A STILL IMAGE TO AN ATMOSPHERE</p><h2 id="process-title">Что именно меняется?</h2><p class="process-intro">Нажимайте шаги по порядку и смотрите на сцену. В 2D меняются яркость, слой дождя и кадрирование исходного SVG. Дополнительный 3D-режим строит отдельную объёмную сцену.</p>
+  <div class="section-heading"><p class="eyebrow">ВАША АТМОСФЕРА / ТРИ ШАГА</p><h2 id="process-title">Один сад.<br><em>Разные истории.</em></h2><p class="process-intro">Свет меняет настроение. Дождь добавляет движение. Ракурс выбирает главного героя. Попробуйте три варианта и сравните.</p></div>
   <ol class="process-steps">
-    <li><span class="step-number">01 / ИСХОДНИК</span><h3>Возьмите композицию</h3><p>Храм, ворота и луна уже нарисованы в SVG. Верните свет 100%, общий план и сухую погоду.</p><button type="button" data-process="original">Показать исходник ↑</button></li>
-    <li><span class="step-number">02 / АТМОСФЕРА</span><h3>Добавьте свет и дождь</h3><p>Повысим яркость до 130% и включим отдельный слой дождя. Геометрия изображения останется прежней.</p><button type="button" data-process="atmosphere">Применить атмосферу ↑</button></li>
-    <li><span class="step-number">03 / РЕЗУЛЬТАТ</span><h3>Выберите главный объект</h3><p>Приблизим храм. В 2D это кадрирование картинки, в 3D — перемещение камеры. Меняйте параметры и сравнивайте.</p><button type="button" data-process="result">Собрать финальный кадр ↑</button></li>
+    <li><div class="step-art step-art-original" aria-hidden="true"><span>01</span><span class="step-symbol">◯</span></div><span class="step-number">КОМПОЗИЦИЯ</span><h3>Начните с тишины</h3><p>Общий план, мягкий свет и сухая погода. Посмотрите, как ворота, храм и луна собираются в одну композицию.</p><button type="button" data-process="original">Исходный кадр <span aria-hidden="true">↑</span></button></li>
+    <li><div class="step-art step-art-atmosphere" aria-hidden="true"><span>02</span><span class="step-symbol">☂</span></div><span class="step-number">СВЕТ И ДВИЖЕНИЕ</span><h3>Измените настроение</h3><p>Добавьте дождь и поднимите свет до 130%. Заметьте, что стало заметнее — архитектура, фонари или листва.</p><button type="button" data-process="atmosphere">Добавить атмосферу <span aria-hidden="true">↑</span></button></li>
+    <li><div class="step-art step-art-result" aria-hidden="true"><span>03</span><span class="step-symbol">⌖</span></div><span class="step-number">ВАШ РАКУРС</span><h3>Приблизьтесь к храму</h3><p>Выберите главный объект. На кадре меняется приближение, а в 3D камера перемещается внутри объёмного сада.</p><button type="button" data-process="result">Финальный ракурс <span aria-hidden="true">↑</span></button></li>
   </ol>
-  <p class="exercise"><strong>Задание ученику:</strong> создайте спокойный и драматичный варианты этой сцены. Запишите три параметра каждого: свет, дождь, кадр. Объясните, какой из них сильнее изменил настроение.</p>
+  <div class="exercise"><span class="exercise-label">ПРАКТИКА ДЛЯ УЧЕНИКА</span><p>Создайте <strong>спокойную</strong> и <strong>драматичную</strong> версии сада. Сохраните три параметра: свет, дождь и ракурс. Объясните, какой сильнее изменил настроение.</p></div>
 </section>
-<section id="about" class="about"><p class="eyebrow">AN INTERACTIVE LANDSCAPE</p><h2>Маленькое путешествие.<br><em>В собственном темпе.</em></h2><div class="notes"><p>2D-режим работает без WebGL: кнопки меняют кадрирование, ползунок — яркость, дождь — отдельный анимированный слой. Пауза останавливает движение дождя. «Исходник» всегда возвращает начальные параметры.</p><p>3D — самостоятельная художественная сцена на Three.js, а не восстановление объёма из этой картинки. На телефонах отключены тяжёлые эффекты. Если 3D недоступно, управление продолжит работать в 2D. Для людей с предпочтением уменьшенного движения анимация изначально приостановлена.</p></div><footer><p>3D-сцена — <a href="https://github.com/MengTo/threeui">ThreeUI Community / Meng To</a> · MIT.<br>2D-иллюстрация, интерфейс и адаптация — Алексей Сафонов, с помощью ИИ.</p><a href="https://github.com/safal207/quiet-hours-sanctuary">Исходники проекта ↗</a></footer></section>
-</main><script type="module" src="app.js?v=light4"></script>
+<section id="about" class="about"><div class="about-heading"><p class="eyebrow">ЗА КАДРОМ</p><h2>Внимание<br><em>к маленькому.</em></h2></div><div class="about-copy"><p>Этот сад — небольшая интерактивная работа о свете и композиции. Измените несколько деталей, и знакомое место начнёт ощущаться иначе.</p><details class="technical-notes"><summary>Как устроена сцена <span aria-hidden="true">+</span></summary><div class="notes"><p>Сначала показан настоящий кадр 3D-модели. Без WebGL доступны его яркость, кадрирование и отдельный слой дождя. Это обработка изображения: новая геометрия из картинки не создаётся.</p><p>После запуска 3D открывается объёмная сцена на Three.js: камера, свет, дождь и движение листьев работают внутри модели. Лёгкий режим отключает тяжёлые эффекты. Пауза и настройки уменьшенного движения учитываются в обоих режимах.</p></div></details></div><footer><p>3D-сцена — <a href="https://github.com/MengTo/threeui">ThreeUI Community / Meng To</a> · MIT.<br>Интерфейс и адаптация — Алексей Сафонов, с помощью ИИ.</p><a href="https://github.com/safal207/quiet-hours-sanctuary">Исходники проекта <span aria-hidden="true">↗</span></a></footer></section>
+</main><script type="module" src="app.js?v=polish1"></script>
 </body></html>

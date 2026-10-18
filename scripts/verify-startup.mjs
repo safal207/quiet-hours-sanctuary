@@ -11,8 +11,8 @@ assert.notEqual(source,original,'Harness must replace the temple dynamic import;
 const microtasks=async()=>{for(let i=0;i<12;i++)await Promise.resolve()};
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return{promise,resolve,reject}}
 
-function harness({failAt=[],reducedMotion=false}={}){
- const timeline=[],elements=new Map(),raf=new Map(),renderers=[],errors=[],load=deferred();let nextRaf=0,time=0,loadCalls=0,firstDraw=false;
+function harness({failAt=[],reducedMotion=false,createDelay=0}={}){
+ const timeline=[],elements=new Map(),raf=new Map(),timers=new Map(),renderers=[],errors=[],load=deferred(),loads=[];let nextRaf=0,nextTimer=0,time=0,loadCalls=0,firstDraw=false;
  class Element{
   constructor(selector){this.selector=selector;this.listeners=new Map();this.attributes=new Map();this.style={setProperty(k,v){this[k]=String(v)}};this.dataset={};this.disabled=false;this.hidden=false;this.textContent='';this.value='100';this.clientWidth=1280;this.clientHeight=850;this.width=1280;this.height=850;this.isConnected=true;const classes=new Set();this.classList={add:(...xs)=>{for(const x of xs){classes.add(x);if(selector==='.sanctuary'&&x==='ready')timeline.push('ready')}},remove:(...xs)=>xs.forEach(x=>classes.delete(x)),contains:x=>classes.has(x),toggle:(x,force)=>{const on=force===undefined?!classes.has(x):force;if(on)classes.add(x);else classes.delete(x);return on}}}
   addEventListener(type,fn){const a=this.listeners.get(type)||[];a.push(fn);this.listeners.set(type,a)}
@@ -24,33 +24,35 @@ function harness({failAt=[],reducedMotion=false}={}){
  }
  const q=s=>{if(!elements.has(s))elements.set(s,new Element(s));return elements.get(s)};
  const controls=['[data-view="0"]','[data-view="2"]','[data-view="4"]','#rain','#pause','#light'].map(q);controls.forEach(e=>e.disabled=false);const views=controls.slice(0,3);views.forEach((e,i)=>e.dataset.view=String(i*2));
- const steps=['original','atmosphere','result'].map(value=>{const e=q('[data-process="'+value+'"]');e.dataset.process=value;return e});q('#flat-mode').hidden=true;q('#enter').textContent='Включить 3D';q('#status').textContent='2D уже работает.';
+ const steps=['original','atmosphere','result'].map(value=>{const e=q('[data-process="'+value+'"]');e.dataset.process=value;return e});q('#flat-mode').hidden=true;q('#safe-start').hidden=true;q('#cancel-start').hidden=true;q('#enter').textContent='Включить 3D';q('#status').textContent='2D уже работает.';
  function queryAll(s){if(s.includes('data-process'))return steps;if(s.includes('data-view'))return views;if(s.includes('.controls'))return controls;return[]}
  q('.controls').querySelectorAll=queryAll;
  const document=q('document');document.hidden=false;document.querySelector=q;document.querySelectorAll=queryAll;document.createElement=tag=>new Element(tag);
  const window=q('window');window.innerWidth=1280;window.innerHeight=850;
- function create(){const index=renderers.length;const r={calls:0,disposed:0,reducedMotion:false,paused:false,timingResets:0,setPaused(value){this.paused=value;this.timingResets++},resetTiming(){this.timingResets++},render(){this.calls++;timeline.push('render-attempt');if(this.calls===failAt[index])throw new Error('Injected render failure #'+index+':'+this.calls);firstDraw=true;timeline.push('render-success')},dispose(){this.disposed++;timeline.push('dispose')},resize(){},setPointer(){},setView(value){this.view=value},setRain(value){this.rain=value},setLight(value){this.light=value},getQuality(){return'balanced'}};renderers.push(r);timeline.push('create');return r}
- const context={document,window,location:{search:'',href:'https://example.test/'},navigator:{hardwareConcurrency:4},URLSearchParams,URL,matchMedia:()=>({matches:reducedMotion,addEventListener(){},removeEventListener(){}}),performance:{now:()=>time},requestAnimationFrame(fn){const id=++nextRaf;raf.set(id,fn);return id},cancelAnimationFrame(id){raf.delete(id)},setTimeout,clearTimeout,queueMicrotask,console:{error:(...a)=>errors.push(a),warn:(...a)=>errors.push(a),log(){}},__loadRenderer(){loadCalls++;return load.promise},ResizeObserver:class{observe(){}disconnect(){}}};
+ function create(canvas,options){time+=createDelay;const index=renderers.length;const r={options,quality:options.quality,calls:0,disposed:0,reducedMotion:false,paused:false,timingResets:0,setPaused(value){this.paused=value;this.timingResets++},resetTiming(){this.timingResets++},render(){this.calls++;timeline.push('render-attempt');if(this.calls===failAt[index])throw new Error('Injected render failure #'+index+':'+this.calls);firstDraw=true;timeline.push('render-success')},dispose(){this.disposed++;timeline.push('dispose')},resize(){},setPointer(){},setView(value){this.view=value},setRain(value){this.rain=value},setLight(value){this.light=value},getQuality(){return'balanced'}};renderers.push(r);timeline.push('create');return r}
+ const context={document,window,location:{search:'',href:'https://example.test/'},navigator:{hardwareConcurrency:4},URLSearchParams,URL,matchMedia:()=>({matches:reducedMotion,addEventListener(){},removeEventListener(){}}),performance:{now:()=>time},requestAnimationFrame(fn){const id=++nextRaf;raf.set(id,fn);return id},cancelAnimationFrame(id){raf.delete(id)},setTimeout(fn,delay=0){const id=++nextTimer;timers.set(id,{fn,at:time+delay});return id},clearTimeout(id){timers.delete(id)},queueMicrotask,console:{error:(...a)=>errors.push(a),warn:(...a)=>errors.push(a),log(){}},__loadRenderer(){return (loads[loadCalls++]||load).promise},ResizeObserver:class{observe(){}disconnect(){}}};
  window.matchMedia=context.matchMedia;window.requestAnimationFrame=context.requestAnimationFrame;window.cancelAnimationFrame=context.cancelAnimationFrame;
  vm.runInNewContext(source,context,{filename:appPath});
- async function tick(){await microtasks();const batch=[...raf];raf.clear();time+=16;for(const[,fn]of batch)fn(time);await microtasks()}
+ async function runTimers(){for(const [id,timer] of [...timers]){if(timer.at<=time&&timers.has(id)){timers.delete(id);timer.fn()}}await microtasks()}
+ async function tick(){await microtasks();const batch=[...raf];raf.clear();time+=16;await runTimers();for(const[,fn]of batch)fn(time);await microtasks()}
+ async function advance(ms){time+=ms;await runTimers()}
  async function drive(promise){let done=false,rejection;promise.then(()=>done=true,e=>{done=true;rejection=e});for(let i=0;i<30&&!done;i++){await microtasks();if(!done)await tick()}assert.ok(done,'Host operation did not finish after 30 frame/microtask cycles');if(rejection)throw rejection;await microtasks()}
- return{q,controls,renderers,errors,raf,timeline,load,get loadCalls(){return loadCalls},get firstDraw(){return firstDraw},release(){load.resolve({createTempleNightRenderer:create})},tick,drive,click:()=>q('#enter').emit('click')};
+ return{q,controls,renderers,errors,raf,timers,timeline,load,loads,advance,newLoad(){const next=deferred();loads.push(next);return next},get loadCalls(){return loadCalls},get firstDraw(){return firstDraw},release(){load.resolve({createTempleNightRenderer:create})},tick,drive,click:()=>q('#enter').emit('click')};
 }
-function failedState(h,label){assert.equal(h.q('.sanctuary').classList.contains('ready'),false,label+': ready removed');assert.equal(h.q('#enter').disabled,false,label+': retry enabled');assert.equal(h.q('#enter').hidden,false,label+': retry not hidden');assert.ok(h.controls.every(e=>!e.disabled),label+': 2D controls stay usable');assert.match(h.q('#mode').textContent,/2D/);assert.match(h.q('#status').textContent,/2D/);assert.equal(h.raf.size,0,label+': animation frames cancelled');assert.ok(h.renderers.at(-1)?.disposed>0,label+': renderer disposed')}
+function failedState(h,label){assert.equal(h.q('.sanctuary').classList.contains('ready'),false,label+': ready removed');assert.equal(h.q('#enter').disabled,false,label+': retry enabled');assert.equal(h.q('#enter').hidden,false,label+': retry not hidden');assert.ok(h.controls.every(e=>!e.disabled),label+': 2D controls stay usable');assert.match(h.q('#mode').textContent,/Кадр/);assert.match(h.q('#status').textContent,/Кадр/);assert.equal(h.raf.size,0,label+': animation frames cancelled');assert.ok(h.renderers.at(-1)?.disposed>0,label+': renderer disposed')}
 
 // A useful image transformation is available before WebGL is requested.
 {
- const h=harness();assert.equal(h.loadCalls,0);assert.ok(h.controls.every(e=>!e.disabled));assert.match(h.q('#result').textContent,/2D-иллюстрация.*100%.*без дождя/);
+ const h=harness();assert.equal(h.loadCalls,0);assert.ok(h.controls.every(e=>!e.disabled));assert.match(h.q('#result').textContent,/Кадр сцены.*100%.*без дождя/);
  await h.q('[data-process="atmosphere"]').emit('click');assert.equal(h.q('#poster').style['--light'],'1.3');assert.ok(h.q('.sanctuary').classList.contains('raining'));assert.match(h.q('#result').textContent,/130%.*дождь/);
  await h.q('[data-process="result"]').emit('click');assert.equal(h.q('#poster').style['--scale'],'1.6');assert.equal(h.q('[data-view="4"]').getAttribute('aria-pressed'),'true');assert.match(h.q('#result').textContent,/храм/);
  await h.q('#pause').emit('click');assert.ok(h.q('.sanctuary').classList.contains('paused'));
- await h.q('#reset').emit('click');assert.equal(h.q('#poster').style['--light'],'1');assert.equal(h.q('#poster').style['--scale'],'1');assert.ok(!h.q('.sanctuary').classList.contains('raining'));assert.equal(h.loadCalls,0,'2D lessons must not initialize WebGL');
- console.log('PASS 2D before import: atmosphere, framing, pause and repeatable reset');
+ await h.q('#reset').emit('click');assert.equal(h.q('#poster').style['--light'],'1');assert.equal(h.q('#poster').style['--scale'],'1');assert.ok(!h.q('.sanctuary').classList.contains('raining'));assert.equal(h.loadCalls,0,'Poster lessons must not initialize WebGL');
+ console.log('PASS real-scene poster before import: atmosphere, framing, pause and repeatable reset');
 }
 {
  const h=harness({reducedMotion:true});assert.ok(h.q('.sanctuary').classList.contains('paused'),'Reduced-motion preference pauses rain at initialization');assert.equal(h.q('#pause').getAttribute('aria-pressed'),'true');
- const pending=h.click();h.release();await h.drive(pending);assert.equal(h.renderers[0].paused,true,'Reduced-motion 3D starts with a frozen animation clock');assert.equal(h.raf.size,0);
+ const pending=h.click();h.release();await h.drive(pending);assert.deepEqual({...h.renderers[0].options},{quality:'low',post:false},'Default profile must compile the fast real 3D scene');assert.equal(h.renderers[0].paused,true,'Reduced-motion 3D starts with a frozen animation clock');assert.equal(h.raf.size,0);
  console.log('PASS reduced-motion initial state and frozen 3D clock');
 }
 // Delayed imports cannot activate the stage; a double click must not import twice.
@@ -85,7 +87,40 @@ function failedState(h,label){assert.equal(h.q('.sanctuary').classList.contains(
 }
 // Returning to the source illustration must preserve current controls and dispose 3D.
 {
- const h=harness(),pending=h.click();h.release();await h.drive(pending);await h.q('[data-process="result"]').emit('click');await h.q('#flat-mode').emit('click');assert.equal(h.q('.sanctuary').classList.contains('ready'),false);assert.ok(h.renderers[0].disposed>0);assert.match(h.q('#result').textContent,/2D-иллюстрация.*храм.*130%.*дождь/);assert.equal(h.raf.size,0);assert.ok(h.controls.every(e=>!e.disabled));
- console.log('PASS explicit return to 2D preserves transformation');
+ const h=harness(),pending=h.click();h.release();await h.drive(pending);await h.q('[data-process="result"]').emit('click');await h.q('#flat-mode').emit('click');assert.equal(h.q('.sanctuary').classList.contains('ready'),false);assert.ok(h.renderers[0].disposed>0);assert.match(h.q('#result').textContent,/Кадр сцены.*храм.*130%.*дождь/);assert.equal(h.raf.size,0);assert.ok(h.controls.every(e=>!e.disabled));
+ console.log('PASS explicit return to the real-scene poster preserves transformation');
+}
+// A slow or hung module must leave both an immediate cancel and a bounded loading state.
+{
+ const h=harness(),pending=h.click();await microtasks();assert.equal(h.q('#cancel-start').hidden,false);assert.equal(h.q('#cancel-start').disabled,false);assert.equal(h.q('.scene-frame').getAttribute('aria-busy'),'true');
+ await h.advance(11999);assert.equal(h.q('#enter').disabled,true,'Deadline must not expire early');await h.advance(1);await h.drive(pending);
+ assert.equal(h.q('#enter').disabled,false);assert.equal(h.q('#cancel-start').hidden,true);assert.equal(h.q('.scene-frame').getAttribute('aria-busy'),'false');assert.match(h.q('#status').textContent,/12 секунд/);assert.equal(h.renderers.length,0);assert.equal(h.timers.size,0);
+ h.release();await microtasks();await h.tick();assert.equal(h.renderers.length,0,'A late timed-out module cannot construct WebGL');
+ await h.drive(h.click());assert.equal(h.renderers.length,1,'A user retry may reuse the now loaded module');assert.equal(h.q('.sanctuary').classList.contains('ready'),true);
+ console.log('PASS hung import deadline, late-resolution invalidation and explicit retry');
+}
+// Cancelling an import and retrying immediately must not let the old finally reset newer loading UI.
+{
+ const h=harness(),first=h.newLoad(),second=h.newLoad(),pending=h.click();await microtasks();await h.q('[data-view="4"]').emit('click');h.q('#light').value='60';await h.q('#light').emit('input');await h.q('#rain').emit('click');await h.q('#cancel-start').emit('click');await h.drive(pending);
+ assert.equal(h.q('#enter').disabled,false);assert.equal(h.q('#cancel-start').hidden,true);assert.match(h.q('#result').textContent,/Кадр сцены.*храм.*60%.*дождь/);assert.equal(h.renderers.length,0);assert.equal(h.timers.size,0);
+ const retry=h.click();await microtasks();first.resolve({createTempleNightRenderer(){throw new Error('Stale attempt constructed renderer')}});await microtasks();assert.equal(h.q('#enter').disabled,true,'Old attempt must not clear a newer busy state');assert.equal(h.renderers.length,0);
+ second.resolve({createTempleNightRenderer:()=>({quality:'low',setPaused(){},setRain(){},setLight(){},setView(){},render(){},dispose(){}})});await h.drive(retry);assert.equal(h.q('.sanctuary').classList.contains('ready'),true);assert.equal(h.q('#enter').disabled,false);assert.equal(h.q('#cancel-start').hidden,true);
+ console.log('PASS cancellation, preserved poster controls and stale-attempt/new-retry isolation');
+}
+// A rejected download must restore the poster and not leave an unhandled promise or deadline.
+{
+ const h=harness(),pending=h.click();h.load.reject(new Error('Injected import network failure'));await h.drive(pending);assert.equal(h.q('#enter').disabled,false);assert.equal(h.q('.sanctuary').classList.contains('ready'),false);assert.equal(h.q('#cancel-start').hidden,true);assert.match(h.q('#status').textContent,/не запустилось/);assert.equal(h.timers.size,0);assert.equal(h.renderers.length,0);
+ console.log('PASS import rejection restores an actionable poster');
+}
+// A hidden document cannot hang on throttled animation frames or initialize 3D in the background.
+{
+ const h=harness(),pending=h.click();await microtasks();h.q('document').hidden=true;await h.q('document').emit('visibilitychange');await h.drive(pending);h.release();await microtasks();assert.equal(h.renderers.length,0);assert.equal(h.q('#enter').disabled,false);assert.match(h.q('#status').textContent,/страница была скрыта/);assert.equal(h.timers.size,0);
+ h.q('document').hidden=false;await h.q('document').emit('visibilitychange');assert.equal(h.renderers.length,0,'Visibility restoration requires an explicit restart');await h.drive(h.click());assert.equal(h.q('.sanctuary').classList.contains('ready'),true);
+ console.log('PASS hidden-tab cancellation and explicit visible restart');
+}
+// The elapsed limit is checked after synchronous setup, which no JS timer can preempt.
+{
+ const h=harness({createDelay:12001}),pending=h.click();h.release();await h.drive(pending);failedState(h,'synchronous over-deadline setup');assert.match(h.q('#status').textContent,/12 секунд/);assert.ok(!h.timeline.includes('ready'),'An over-deadline first frame cannot hide the usable poster');assert.equal(h.timers.size,0);
+ console.log('PASS post-constructor elapsed deadline check (not a preemptive GPU watchdog)');
 }
 console.log('LIMIT: host lifecycle simulation only; this does not validate browser rendering, GLSL or GPU support.');

@@ -17,7 +17,7 @@ jobs:
   render:
     name: Real temple / ${{ matrix.browser }} / Mesa
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -38,20 +38,23 @@ jobs:
           npx playwright install --with-deps ${{ matrix.browser }}
           sudo apt-get update
           sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils
-      - name: Check real WebGL, lights, cameras, and preview lifecycle
+      - name: Check real WebGL, lights, cameras, preview and visitor page
         env:
           QA_BROWSER: ${{ matrix.browser }}
         run: |
           mkdir -p "qa-webgl-$QA_BROWSER"
-          xvfb-run -a -s '-screen 0 1600x1200x24' sh -c '
+          xvfb-run -a -s '-screen 0 1600x1200x24' sh -ec '
             glxinfo -B > "qa-webgl-$QA_BROWSER/mesa-info.txt" 2>&1
             node scripts/verify-webgl.mjs temple "browser=$QA_BROWSER"
+            node scripts/verify-fullpage.mjs "browser=$QA_BROWSER"
           '
       - name: Retain actual frames and diagnostic report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qa-webgl-temple-${{ matrix.browser }}
-          path: qa-webgl-${{ matrix.browser }}
+          path: |
+            qa-webgl-${{ matrix.browser }}
+            qa-fullpage-${{ matrix.browser }}
           retention-days: 14
           if-no-files-found: error

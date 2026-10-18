@@ -16,7 +16,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,6 +29,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Render actual 3D and verify lighting
         run: node scripts/verify-webgl.mjs temple
+      - name: Verify visitor page, mobile framing, startup and recovery
+        run: node scripts/verify-fullpage.mjs
       - name: Retain rendered models and QA evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -36,6 +38,7 @@ jobs:
           name: qa-webgl-temple
           path: |
             qa-webgl
+            qa-fullpage
             dist/assets/scene-preview.png
           retention-days: 14
           if-no-files-found: error

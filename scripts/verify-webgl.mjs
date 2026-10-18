@@ -75,10 +75,12 @@ try{
   await desktop.page.evaluate(()=>window.__preview.setPreset('away'));const off=await snapshot(desktop,'room-away-0');
   await light(desktop,100);const offFull=await snapshot(desktop,'room-away-100');
   assert.ok(difference(off.bytes,offFull.bytes)<.03,'All lamps off: brightness slider must not create light');pass('room-off-slider-stable');
+  await desktop.page.evaluate(()=>window.__preview.setState({scene:'custom',brightness:100,day:false,ac:false,temperature:22,lights:{pendant:false,floor:false,accent:false}}));
+  const customOff=await snapshot(desktop,'room-custom-off');
   for(const id of ['pendant','floor','accent']){
    await desktop.page.evaluate(id=>window.__preview.setState({scene:'custom',brightness:100,day:false,ac:false,temperature:22,lights:{pendant:id==='pendant',floor:id==='floor',accent:id==='accent'}}),id);
    const only=await snapshot(desktop,`room-${id}-only`);
-   assert.ok(only.m.mean>off.m.mean+.01,`${id} must illuminate real pixels`);pass(`room-${id}-light-visible`,{off:off.m.mean,on:only.m.mean});
+   assert.ok(only.m.mean>customOff.m.mean+.01,`${id} must illuminate real pixels`);pass(`room-${id}-light-visible`,{off:customOff.m.mean,on:only.m.mean});
   }
   await desktop.page.locator('[data-view=plan]').click();const plan=await snapshot(desktop,'room-plan');
   await desktop.page.locator('[data-view="3d"]').click();const model=await snapshot(desktop,'room-model');

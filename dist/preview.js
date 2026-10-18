@@ -1,6 +1,7 @@
 const sceneName=document.body.dataset.scene;
 const params=new URLSearchParams(location.search);
 const qa=params.get('qa')==='1';
+if(window.parent!==window)document.querySelector('header a').hidden=true;
 const canvas=document.querySelector('canvas');
 const status=document.querySelector('.status');
 const slider=document.querySelector('#light');
@@ -62,7 +63,7 @@ async function boot(){
       hooks.quality=world.quality;hooks.postprocessing=world.postprocessing;
       world.setPaused?.(qa||reduced);world.setRain(false);world.setView(0);world.setLight(1);
     }
-    render(1000);hooks.ready=true;document.body.dataset.ready='true';status.textContent='';
+    render(1000);if(!world||hooks.error)throw new Error(hooks.error||'Renderer unavailable');hooks.ready=true;document.body.dataset.ready='true';status.textContent='';
     setLight(slider.value);sync();notify('designlab:preview-ready');
   }catch(error){fail(error)}
 }

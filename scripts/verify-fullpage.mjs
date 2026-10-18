@@ -113,6 +113,7 @@ async function visit(width){
   pass(`${width}-raster-poster-before-webgl`,poster);
   await layout(test,'poster');
   await page.screenshot({path:path.join(out,`${width}-entry-page.png`),fullPage:true});
+  await page.screenshot({path:path.join(out,`${width}-first-screen.png`),fullPage:false});
   await picture(test,`${width}-poster-original`,'#poster');
   await light(test,60);const posterLow=await picture(test,`${width}-poster-light-60`,'#poster');
   await light(test,140);const posterHigh=await picture(test,`${width}-poster-light-140`,'#poster');

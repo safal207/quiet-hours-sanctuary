@@ -151,7 +151,12 @@ try{
   assert.equal(await mobile.page.evaluate(()=>window.__preview.active),false,'Untrusted origin must not resume');
   await mobile.page.evaluate(()=>window.postMessage({type:'designlab:visibility',active:true},location.origin));await mobile.page.waitForTimeout(240);
   assert.equal(await mobile.page.evaluate(()=>window.__preview.active),true);
-  if(kind==='temple'&&width===320)assert.ok(await mobile.page.evaluate(()=>window.__preview.frames)>paused,'Normal animation resumes after visibility');
+  if(kind==='temple'&&width===320){
+   // Software GPU scheduling varies across runners. Require an actual new
+   // rendered frame within a bounded interval, rather than a fixed FPS.
+   await mobile.page.waitForFunction(previous=>window.__preview.frames>previous,paused,{timeout:5000,polling:100});
+   assert.ok(await mobile.page.evaluate(()=>window.__preview.frames)>paused,'Normal animation resumes after visibility');
+  }
   assert.deepEqual(mobile.errors,[]);pass(`${kind}-mobile-${width}-visibility-origin`);await mobile.context.close();
  }
  report.status='passed';report.stage='complete';

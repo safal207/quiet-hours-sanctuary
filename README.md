@@ -59,7 +59,7 @@ Creative direction and implementation: Alexey Safonov, with AI assistance. Code 
 
 The visitor page starts the low profile without HDR bloom on all screens. The canvas stays hidden until a successful first frame. While the module loads, the frame controls and cancel button remain usable. A 12-second asynchronous deadline releases the busy state; cancelled or timed-out imports cannot activate a late renderer. Errors preserve the current light, rain and framing. JavaScript timers cannot preempt a synchronous GPU constructor; the elapsed deadline is checked before that first frame is revealed.
 
-`npm run check` covers 13 mocked-host lifecycle scenarios plus render-pass contracts. `scripts/verify-fullpage.mjs` checks the actual visitor page in CI, including 1200/390/320 px layout and screenshots, real light/camera changes, cancellation, a delayed module and a network-failure retry. The two browser workflows retain `qa-fullpage*` reports and screenshots for visual review; these do not certify physical phone performance.
+`npm run check` covers 14 mocked-host lifecycle scenarios plus render-pass contracts. `scripts/verify-fullpage.mjs` checks the actual visitor page in CI, including 1200/390/320 px layout and screenshots, real light/camera changes, cancellation, a delayed module and a network-failure retry. The two browser workflows retain `qa-fullpage*` reports and screenshots for visual review; these do not certify physical phone performance.
 
 ## Repeatable lesson
 

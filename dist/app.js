@@ -6,6 +6,14 @@ let renderer, playing = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 let raining = false, selectedView = 0, light = 100, raf = 0, busy = false;
 const STARTUP_LIMIT_MS = 12000;
 let startup = null;
+let rendererModule = null, moduleAttempt = 0;
+function loadRendererModule() {
+  if (rendererModule) return Promise.resolve(rendererModule);
+  // Browsers retain a failed module URL in the module map. A fresh local URL lets an
+  // explicit retry recover from a failed download; successful exports are reused.
+  const moduleURL = './temple-renderer.js?v=polish2&attempt=' + (++moduleAttempt);
+  return import(moduleURL).then(module => { rendererModule = module; return module; });
+}
 
 class StartupStopped extends Error {
   constructor(kind, message) { super(message); this.kind = kind; }
@@ -130,7 +138,7 @@ async function enter(options = {}) {
   const wait = promise => Promise.race([promise, interrupted]);
   q('#status').textContent = 'Открываем объёмную сцену… Кадр и настройки доступны. Запуск можно остановить.';
   try {
-    const { createTempleNightRenderer } = await wait(import('./temple-renderer.js?v=polish1'));
+    const { createTempleNightRenderer } = await wait(loadRendererModule());
     if (!current()) return;
     // A timer yields to the UI without depending on animation frames, which stop in hidden tabs.
     await wait(new Promise(resolve => { attempt.paintTimer = setTimeout(resolve, 0); }));

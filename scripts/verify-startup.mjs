@@ -6,13 +6,13 @@ import assert from 'node:assert/strict';
 
 const appPath=path.resolve(process.argv[2]||new URL('../dist/app.js',import.meta.url).pathname);
 const original=fs.readFileSync(appPath,'utf8');
-const source=original.replace(/import\(\s*['"]\.\/temple-renderer\.js(?:\?[^'"]*)?['"]\s*\)/g,'__loadRenderer()');
+const source=original.replace(/import\(\s*moduleURL\s*\)/g,'__loadRenderer(moduleURL)');
 assert.notEqual(source,original,'Harness must replace the temple dynamic import; update matcher if module path changed.');
 const microtasks=async()=>{for(let i=0;i<12;i++)await Promise.resolve()};
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return{promise,resolve,reject}}
 
 function harness({failAt=[],reducedMotion=false,createDelay=0}={}){
- const timeline=[],elements=new Map(),raf=new Map(),timers=new Map(),renderers=[],errors=[],load=deferred(),loads=[];let nextRaf=0,nextTimer=0,time=0,loadCalls=0,firstDraw=false;
+ const timeline=[],elements=new Map(),raf=new Map(),timers=new Map(),renderers=[],errors=[],load=deferred(),loads=[],loadURLs=[];let nextRaf=0,nextTimer=0,time=0,loadCalls=0,firstDraw=false;
  class Element{
   constructor(selector){this.selector=selector;this.listeners=new Map();this.attributes=new Map();this.style={setProperty(k,v){this[k]=String(v)}};this.dataset={};this.disabled=false;this.hidden=false;this.textContent='';this.value='100';this.clientWidth=1280;this.clientHeight=850;this.width=1280;this.height=850;this.isConnected=true;const classes=new Set();this.classList={add:(...xs)=>{for(const x of xs){classes.add(x);if(selector==='.sanctuary'&&x==='ready')timeline.push('ready')}},remove:(...xs)=>xs.forEach(x=>classes.delete(x)),contains:x=>classes.has(x),toggle:(x,force)=>{const on=force===undefined?!classes.has(x):force;if(on)classes.add(x);else classes.delete(x);return on}}}
   addEventListener(type,fn){const a=this.listeners.get(type)||[];a.push(fn);this.listeners.set(type,a)}
@@ -30,14 +30,14 @@ function harness({failAt=[],reducedMotion=false,createDelay=0}={}){
  const document=q('document');document.hidden=false;document.querySelector=q;document.querySelectorAll=queryAll;document.createElement=tag=>new Element(tag);
  const window=q('window');window.innerWidth=1280;window.innerHeight=850;
  function create(canvas,options){time+=createDelay;const index=renderers.length;const r={options,quality:options.quality,calls:0,disposed:0,reducedMotion:false,paused:false,timingResets:0,setPaused(value){this.paused=value;this.timingResets++},resetTiming(){this.timingResets++},render(){this.calls++;timeline.push('render-attempt');if(this.calls===failAt[index])throw new Error('Injected render failure #'+index+':'+this.calls);firstDraw=true;timeline.push('render-success')},dispose(){this.disposed++;timeline.push('dispose')},resize(){},setPointer(){},setView(value){this.view=value},setRain(value){this.rain=value},setLight(value){this.light=value},getQuality(){return'balanced'}};renderers.push(r);timeline.push('create');return r}
- const context={document,window,location:{search:'',href:'https://example.test/'},navigator:{hardwareConcurrency:4},URLSearchParams,URL,matchMedia:()=>({matches:reducedMotion,addEventListener(){},removeEventListener(){}}),performance:{now:()=>time},requestAnimationFrame(fn){const id=++nextRaf;raf.set(id,fn);return id},cancelAnimationFrame(id){raf.delete(id)},setTimeout(fn,delay=0){const id=++nextTimer;timers.set(id,{fn,at:time+delay});return id},clearTimeout(id){timers.delete(id)},queueMicrotask,console:{error:(...a)=>errors.push(a),warn:(...a)=>errors.push(a),log(){}},__loadRenderer(){return (loads[loadCalls++]||load).promise},ResizeObserver:class{observe(){}disconnect(){}}};
+ const context={document,window,location:{search:'',href:'https://example.test/'},navigator:{hardwareConcurrency:4},URLSearchParams,URL,matchMedia:()=>({matches:reducedMotion,addEventListener(){},removeEventListener(){}}),performance:{now:()=>time},requestAnimationFrame(fn){const id=++nextRaf;raf.set(id,fn);return id},cancelAnimationFrame(id){raf.delete(id)},setTimeout(fn,delay=0){const id=++nextTimer;timers.set(id,{fn,at:time+delay});return id},clearTimeout(id){timers.delete(id)},queueMicrotask,console:{error:(...a)=>errors.push(a),warn:(...a)=>errors.push(a),log(){}},__loadRenderer(url){loadURLs.push(url);return (loads[loadCalls++]||load).promise},ResizeObserver:class{observe(){}disconnect(){}}};
  window.matchMedia=context.matchMedia;window.requestAnimationFrame=context.requestAnimationFrame;window.cancelAnimationFrame=context.cancelAnimationFrame;
  vm.runInNewContext(source,context,{filename:appPath});
  async function runTimers(){for(const [id,timer] of [...timers]){if(timer.at<=time&&timers.has(id)){timers.delete(id);timer.fn()}}await microtasks()}
  async function tick(){await microtasks();const batch=[...raf];raf.clear();time+=16;await runTimers();for(const[,fn]of batch)fn(time);await microtasks()}
  async function advance(ms){time+=ms;await runTimers()}
  async function drive(promise){let done=false,rejection;promise.then(()=>done=true,e=>{done=true;rejection=e});for(let i=0;i<30&&!done;i++){await microtasks();if(!done)await tick()}assert.ok(done,'Host operation did not finish after 30 frame/microtask cycles');if(rejection)throw rejection;await microtasks()}
- return{q,controls,renderers,errors,raf,timers,timeline,load,loads,advance,newLoad(){const next=deferred();loads.push(next);return next},get loadCalls(){return loadCalls},get firstDraw(){return firstDraw},release(){load.resolve({createTempleNightRenderer:create})},tick,drive,click:()=>q('#enter').emit('click')};
+ return{q,controls,renderers,errors,raf,timers,timeline,load,loads,loadURLs,advance,newLoad(){const next=deferred();loads.push(next);return next},get loadCalls(){return loadCalls},get firstDraw(){return firstDraw},release(target=load){target.resolve({createTempleNightRenderer:create})},tick,drive,click:()=>q('#enter').emit('click')};
 }
 function failedState(h,label){assert.equal(h.q('.sanctuary').classList.contains('ready'),false,label+': ready removed');assert.equal(h.q('#enter').disabled,false,label+': retry enabled');assert.equal(h.q('#enter').hidden,false,label+': retry not hidden');assert.ok(h.controls.every(e=>!e.disabled),label+': 2D controls stay usable');assert.match(h.q('#mode').textContent,/Кадр/);assert.match(h.q('#status').textContent,/Кадр/);assert.equal(h.raf.size,0,label+': animation frames cancelled');assert.ok(h.renderers.at(-1)?.disposed>0,label+': renderer disposed')}
 
@@ -111,6 +111,13 @@ function failedState(h,label){assert.equal(h.q('.sanctuary').classList.contains(
 {
  const h=harness(),pending=h.click();h.load.reject(new Error('Injected import network failure'));await h.drive(pending);assert.equal(h.q('#enter').disabled,false);assert.equal(h.q('.sanctuary').classList.contains('ready'),false);assert.equal(h.q('#cancel-start').hidden,true);assert.match(h.q('#status').textContent,/не запустилось/);assert.equal(h.timers.size,0);assert.equal(h.renderers.length,0);
  console.log('PASS import rejection restores an actionable poster');
+}
+// A browser may retain a failed import URL; a retry uses a new local URL and then caches success.
+{
+ const h=harness(),first=h.newLoad(),second=h.newLoad(),pending=h.click();first.reject(new Error('Injected failed module download'));await h.drive(pending);assert.equal(h.q('#enter').disabled,false);
+ const retry=h.click();await microtasks();assert.equal(h.loadURLs.length,2);assert.notEqual(h.loadURLs[0],h.loadURLs[1],'Network retry must not reuse the failed browser module-map key');assert.match(h.loadURLs[0],/^\.\/temple-renderer\.js\?v=polish2&attempt=1$/);assert.match(h.loadURLs[1],/^\.\/temple-renderer\.js\?v=polish2&attempt=2$/);
+ h.release(second);await h.drive(retry);assert.equal(h.q('.sanctuary').classList.contains('ready'),true);await h.q('#flat-mode').emit('click');await h.drive(h.click());assert.equal(h.renderers.length,2);assert.equal(h.loadCalls,2,'Successful module exports must be reused for later renderer restarts');
+ console.log('PASS failed-download retry uses a fresh module URL and successful exports are cached');
 }
 // A hidden document cannot hang on throttled animation frames or initialize 3D in the background.
 {

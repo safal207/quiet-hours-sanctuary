@@ -20,21 +20,21 @@ The renderer is adapted from Meng To / ThreeUI Community, pinned to commit `6880
 1. Open the page without starting 3D. Adjust light and rain; select one of three framings.
 2. Follow the three lesson buttons: original (100%, no rain), atmosphere (130%, rain), final frame (temple).
 3. Pause the rain or reset the source. The result bar shows every active setting.
-4. Start optional 3D. Current settings transfer to it; return to 2D without losing them.
-5. If WebGL fails, continue the exercise in 2D and use the visible lightweight retry.
+4. Start optional 3D. Current settings transfer to it; return to the frame without losing them.
+5. If WebGL fails, continue the exercise on the prepared frame and use the visible lightweight retry.
 
 ## Verification boundary
 
 - Node syntax, static local asset links and anchor targets checked by scripts/verify.mjs.
-- Node host simulation checks the 2D lesson presets, reset, reduced motion, loading-state transfer, initial/late 3D failures, context loss and explicit return to 2D.
+- Node host simulation checks the frame lesson presets, reset, reduced motion, loading-state transfer, initial/late 3D failures, context loss and explicit return to the frame.
 - Pure capability policy and scene assembly checks use mocked GPU and Canvas2D; they do not certify actual rendering.
-- No real browser, mobile screenshot or WebGL runtime verification was available during this build.
+- Browser CI separately exercises the actual visitor page and preview renderer in Chromium, Firefox and Linux WebKit, with screenshots at desktop and mobile widths. Screenshots support visual review; shader execution and nonblank pixels do not certify artistic quality.
 - No performance, conversion, revenue or client-use results are claimed.
 
 ## Product scope
 
 - The base temple world is by Meng To / ThreeUI Community (MIT), not an original Safonov model.
-- New contribution: visual identity, responsive page, control API, lifecycle integration, interactive 2D illustration, teaching steps and documentation.
-- WebGL is required only for the optional 3D environment. The 2D illustration remains fully interactive.
-- The 2D example uses prepared SVG artwork with CSS brightness, framing and a rain layer; it does not reconstruct an image into 3D.
-- Device FPS and real-browser rendering have not been measured in this environment.
+- New contribution: visual identity, responsive page, control API, lifecycle integration, interactive real-model frame presentation, teaching steps and documentation.
+- WebGL is required only for the optional 3D environment. Frame controls remain available before and during loading and after cancellation or failure.
+- The initial frame is a renderer PNG with CSS brightness, framing and a rain layer. Opening 3D loads the existing procedural geometry; it does not reconstruct a model from an image.
+- Physical-device FPS, native Xiaomi dark-mode behavior and Safari/iOS have not been measured in these Linux software-rendering runs.
